@@ -3,10 +3,382 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PWA Custom Gantt Chart - Power User Edition</title>
-    <!-- Supabase JS Client via ESM CDN -->
+    <title>PWA Custom Gantt Chart - Pro Edition</title>
     <script type="module">
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+        window.createClient = createClient;
+    </script>
+    <style>
+        :root {
+            --bg-dark: #0f172a; --bg-panel: #1e293b; --bg-hover: #334155; --border-color: #334155;
+            --text-main: #f8fafc; --text-muted: #94a3b8; --accent-blue: #38bdf8; --accent-green: #22c55e;
+            --accent-red: #ef4444; --sidebar-width: 340px; --row-height: 44px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+        body { background-color: var(--bg-dark); color: var(--text-main); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+        /* Auth Screen */
+        #authScreen { position: fixed; inset: 0; background: var(--bg-dark); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+        .auth-card { background: var(--bg-panel); border: 1px solid var(--border-color); padding: 30px; border-radius: 12px; width: 350px; }
+        .auth-input { width: 100%; padding: 10px; margin-bottom: 12px; background: var(--bg-dark); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 6px; }
+        .auth-btn { width: 100%; padding: 10px; background: var(--accent-blue); color: #0f172a; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; }
+        .auth-toggle { text-align: center; margin-top: 12px; font-size: 0.85rem; color: var(--text-muted); cursor: pointer; }
+
+        /* Header */
+        header { height: 60px; background: var(--bg-panel); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; flex-shrink: 0; }
+        .view-switcher { background: var(--bg-dark); border: 1px solid var(--border-color); color: var(--text-main); padding: 6px 12px; border-radius: 6px; font-size: 0.85rem; cursor: pointer; }
+
+        /* Main Layout */
+        .app-container { display: flex; flex: 1; overflow: hidden; }
+        .task-sidebar { width: var(--sidebar-width); background: var(--bg-panel); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; flex-shrink: 0; z-index: 10; }
+        .sidebar-header { height: 54px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; font-weight: bold; font-size: 0.85rem; }
+        .sidebar-body { flex: 1; overflow-y: auto; position: relative; }
+
+        /* Task Rows */
+        .task-row-wrapper { position: relative; }
+        .task-row-node { height: var(--row-height); display: flex; align-items: center; padding: 0 12px; border-bottom: 1px solid var(--border-color); gap: 6px; font-size: 0.85rem; background: var(--bg-panel); transition: background 0.15s; }
+        .task-row-node:hover { background-color: var(--bg-hover); }
+        .task-row-node.drag-over { border-top: 2px dashed var(--accent-blue); }
+        .task-row-node.dragging { opacity: 0.5; }
+        .drag-handle { color: var(--text-muted); cursor: grab; font-size: 1rem; }
+        .task-title-text { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+        .task-title-text:hover { color: var(--accent-blue); }
+        
+        .inline-edit-input { flex: 1; background: var(--bg-dark); border: 1px solid var(--accent-blue); color: #fff; padding: 2px 6px; font-size: 0.85rem; border-radius: 4px; outline: none; }
+        
+        .task-actions { display: flex; opacity: 0; }
+        .task-row-node:hover .task-actions { opacity: 1; }
+        .action-icon { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 0.8rem; padding: 2px 4px; }
+
+        /* Insert Line Hover */
+        .insert-hover-line { position: absolute; bottom: -8px; left: 0; right: 0; height: 16px; z-index: 20; display: flex; align-items: center; justify-content: center; opacity: 0; cursor: pointer; }
+        .task-row-wrapper:hover .insert-hover-line { opacity: 1; }
+        .insert-hover-line::before { content: ""; position: absolute; left: 0; right: 0; height: 2px; background: var(--accent-green); }
+        .insert-btn-circle { background: var(--accent-green); color: #000; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.85rem; z-index: 21; }
+
+        .task-inline-input-row { height: var(--row-height); display: flex; align-items: center; padding: 0 12px; background: rgba(34,197,94,0.1); border-bottom: 1px solid var(--accent-green); }
+        .task-inline-input-row input { flex:1; background:var(--bg-dark); border:1px solid var(--accent-green); color:#fff; padding:4px 8px; border-radius:4px; font-size:0.85rem;}
+
+        /* Timeline Area */
+        .timeline-container { flex: 1; display: flex; flex-direction: column; overflow-x: auto; background: var(--bg-dark); position: relative; }
+        
+        /* Merged Hierarchical Header */
+        .timeline-header-scroll { display: flex; flex-direction: column; background: var(--bg-panel); position: sticky; top: 0; z-index: 5; border-bottom: 1px solid var(--border-color); }
+        .header-tier { display: flex; border-bottom: 1px solid var(--border-color); }
+        .header-tier:last-child { border-bottom: none; }
+        .header-cell { display: flex; align-items: center; justify-content: center; border-right: 1px solid var(--border-color); font-size: 0.75rem; color: var(--text-muted); flex-shrink: 0; text-align: center; }
+        .header-cell-top { font-weight: bold; color: var(--text-main); }
+        
+        .timeline-body { flex: 1; position: relative; }
+        .timeline-row { height: var(--row-height); border-bottom: 1px solid var(--border-color); position: relative; display: flex; align-items: center; }
+        .grid-bg-lines { position: absolute; inset: 0; display: flex; pointer-events: none; z-index: 1; }
+        .grid-col-line { border-right: 1px dashed rgba(255,255,255,0.05); flex-shrink: 0; }
+
+        /* Interactive Gantt Bar */
+        .gantt-bar {
+            position: absolute; height: 26px; background: linear-gradient(90deg, #0284c7, #38bdf8);
+            border-radius: 6px; top: 9px; z-index: 2; display: flex; align-items: center; justify-content: space-between;
+            padding: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.2); cursor: grab; user-select: none;
+        }
+        .gantt-bar:active { cursor: grabbing; }
+        .gantt-bar-handle { width: 8px; height: 100%; background: rgba(255,255,255,0.2); cursor: ew-resize; z-index: 3; }
+        .gantt-bar-handle:hover { background: rgba(255,255,255,0.6); }
+        .gantt-bar-title { font-size: 0.7rem; color: #fff; font-weight: bold; overflow: hidden; white-space: nowrap; padding: 0 6px; flex: 1; pointer-events: none; }
+
+        /* Modal Deskripsi */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 2000; display: none; align-items: center; justify-content: center; }
+        .modal-card { background: var(--bg-panel); border: 1px solid var(--border-color); width: 500px; padding: 24px; border-radius: 8px; }
+        .modal-field { margin-bottom: 16px; }
+        .modal-field label { display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 6px; }
+        .modal-field textarea { width: 100%; background: var(--bg-dark); border: 1px solid var(--border-color); color: #fff; padding: 10px; border-radius: 6px; font-size: 0.9rem; resize: vertical; }
+    </style>
+</head>
+<body>
+
+    <div id="authScreen">
+        <div class="auth-card">
+            <h2 id="authTitle">Login Pro Gantt</h2>
+            <input type="email" id="authEmail" class="auth-input" placeholder="Email" />
+            <input type="password" id="authPassword" class="auth-input" placeholder="Password" />
+            <button class="auth-btn" id="authSubmitBtn" onclick="handleAuth()">Masuk</button>
+            <div class="auth-toggle" onclick="toggleAuthMode()" id="authToggleText">Belum punya akun? Daftar</div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="taskModal">
+        <div class="modal-card">
+            <h3>Deskripsi & Catatan Task</h3>
+            <div class="modal-field" style="margin-top:15px;">
+                <label>Detail Deskripsi (Mendukung Multi-baris)</label>
+                <textarea id="modalInputDesc" rows="8"></textarea>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button class="view-switcher" onclick="closeModal()">Batal</button>
+                <button class="view-switcher" style="background: var(--accent-blue); color: #000;" onclick="saveDescription()">Simpan Deskripsi</button>
+            </div>
+        </div>
+    </div>
+
+    <header>
+        <div style="display: flex; align-items: center; gap:10px;">
+            <h1 style="font-size: 1.1rem;">PWA Custom Gantt</h1>
+            <span id="userEmailBadge" style="font-size:0.75rem; color:var(--accent-green);"></span>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <select class="view-switcher" id="timeScaleSelect" onchange="changeTimeScale(this.value)">
+                <option value="yearly">Yearly (Bulan & Minggu)</option>
+                <option value="5years">5 Years (Tahun & Kuartal)</option>
+                <option value="lifetime">Lifetime (Multi-Tahun)</option>
+            </select>
+            <button class="view-switcher" onclick="handleLogout()" style="color: var(--accent-red);">Logout</button>
+        </div>
+    </header>
+
+    <div class="app-container">
+        <div class="task-sidebar">
+            <div class="sidebar-header">
+                <span>Daftar Task</span>
+                <button class="action-icon" onclick="showInlineInputAtBottom()" style="color:var(--accent-green); font-size:1.2rem;">＋</button>
+            </div>
+            <div class="sidebar-body" id="sidebarTaskRows"></div>
+        </div>
+        <div class="timeline-container" id="timelineContainer">
+            <div class="timeline-header-scroll" id="timelineHeader"></div>
+            <div class="timeline-body" id="timelineBodyRows"></div>
+        </div>
+    </div>
+
+    <script>
+        // CONFIGURASI SUPABASE
+        const SUPABASE_URL = 'https://movcjscdntwckaslnumn.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vdmNqc2NkbnR3Y2thc2xudW1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUwNDU3ODUsImV4cCI6MjEwMDYyMTc4NX0.rGYGREApohqwSaArGr4DtZXeuUJ0OUE7QeOyNjpswv8';
+        
+        let supabase = null;
+        let tasksData = [];
+        let currentUser = null;
+        let isSignUpMode = false;
+        
+        let currentScale = 'yearly';
+        const timelineEpoch = new Date('2026-01-01T00:00:00'); // Acuan Waktu 0
+
+        // Variables untuk Interactive Gantt
+        let isDraggingGantt = false;
+        let ganttDragMode = null; // 'move', 'resize-left', 'resize-right'
+        let activeGanttTask = null;
+        let startMouseX = 0;
+        let startLeftPx = 0;
+        let startWidthPx = 0;
+        let colWidthConfig = 40;
+        let daysPerColConfig = 7;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            if (window.createClient) {
+                supabase = window.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                checkSession();
+                setupGlobalGanttListeners();
+            }
+        });
+
+        async function checkSession() {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                currentUser = session.user;
+                document.getElementById('authScreen').style.display = 'none';
+                document.getElementById('userEmailBadge').innerText = currentUser.email;
+                fetchTasks();
+            }
+        }
+
+        async function handleAuth() {
+            const email = document.getElementById('authEmail').value;
+            const password = document.getElementById('authPassword').value;
+            if(!email || !password) return;
+
+            if(isSignUpMode) {
+                const { error } = await supabase.auth.signUp({ email, password });
+                if(error) alert(error.message); else { alert('Sukses daftar! Silakan login.'); toggleAuthMode(); }
+            } else {
+                const { error } = await supabase.auth.signInWithPassword({ email, password });
+                if(error) alert(error.message); else location.reload();
+            }
+        }
+
+        function toggleAuthMode() {
+            isSignUpMode = !isSignUpMode;
+            document.getElementById('authTitle').innerText = isSignUpMode ? 'Daftar Akun Baru' : 'Login Pro Gantt';
+            document.getElementById('authSubmitBtn').innerText = isSignUpMode ? 'Daftar' : 'Masuk';
+            document.getElementById('authToggleText').innerText = isSignUpMode ? 'Sudah punya akun? Login' : 'Belum punya akun? Daftar';
+        }
+        async function handleLogout() { await supabase.auth.signOut(); location.reload(); }
+
+        async function fetchTasks() {
+            const { data, error } = await supabase.from('tasks').select('*').order('sort_order', { ascending: true });
+            if(!error) {
+                tasksData = data || [];
+                renderAll();
+            }
+        }
+
+        function renderAll() {
+            updateScaleConfig();
+            renderTimelineHeader();
+            renderSidebar();
+            renderTimelineRows();
+        }
+
+        function changeTimeScale(scale) { currentScale = scale; renderAll(); }
+
+        function updateScaleConfig() {
+            if (currentScale === 'yearly') { colWidthConfig = 40; daysPerColConfig = 7; } // 1 cell = 1 minggu
+            else if (currentScale === '5years') { colWidthConfig = 80; daysPerColConfig = 91.25; } // 1 cell = 1 kuartal
+            else { colWidthConfig = 40; daysPerColConfig = 365; } // 1 cell = 1 tahun
+        }
+
+        /* ==============================================================
+           1. MERGED HIERARCHICAL HEADER (Tahun > Bulan > Minggu dll)
+           ============================================================== */
+        function renderTimelineHeader() {
+            const header = document.getElementById('timelineHeader');
+            header.innerHTML = '';
+
+            let tier1 = document.createElement('div'); tier1.className = 'header-tier';
+            let tier2 = document.createElement('div'); tier2.className = 'header-tier';
+            let tier3 = document.createElement('div'); tier3.className = 'header-tier';
+
+            if (currentScale === 'yearly') {
+                header.style.width = `${52 * 40}px`;
+                // Tier 1: Tahun
+                tier1.innerHTML = `<div class="header-cell header-cell-top" style="width: 100%; height: 24px;">2026</div>`;
+                // Tier 2: Bulan (Distribusi 52 minggu)
+                const monthWeeks = [4,4,5,4,4,5,4,4,5,4,4,5]; // Total 52
+                const months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
+                monthWeeks.forEach((weeks, i) => {
+                    tier2.innerHTML += `<div class="header-cell" style="width: ${weeks * 40}px; height: 20px; background: rgba(0,0,0,0.1);">${months[i]}</div>`;
+                });
+                // Tier 3: Minggu
+                for(let i=1; i<=52; i++) {
+                    tier3.innerHTML += `<div class="header-cell" style="width: 40px; height: 20px;">W${i}</div>`;
+                }
+                header.append(tier1, tier2, tier3);
+
+            } else if (currentScale === '5years') {
+                header.style.width = `${20 * 80}px`; // 5 tahun x 4 kuartal
+                tier1.innerHTML = `<div class="header-cell header-cell-top" style="width: 100%; height: 24px;">Rencana Jangka Menengah (2026 - 2030)</div>`;
+                for(let y=2026; y<=2030; y++) {
+                    tier2.innerHTML += `<div class="header-cell" style="width: 320px; height: 20px; background: rgba(0,0,0,0.1);">${y}</div>`;
+                    for(let q=1; q<=4; q++) {
+                        tier3.innerHTML += `<div class="header-cell" style="width: 80px; height: 20px;">Q${q}</div>`;
+                    }
+                }
+                header.append(tier1, tier2, tier3);
+
+            } else if (currentScale === 'lifetime') {
+                header.style.width = `${50 * 40}px`; // 50 tahun
+                tier1.innerHTML = `<div class="header-cell header-cell-top" style="width: 100%; height: 24px;">Lifetime (2026 - 2075)</div>`;
+                for(let d=0; d<5; d++) { // 5 Dekade
+                    tier2.innerHTML += `<div class="header-cell" style="width: 400px; height: 20px; background: rgba(0,0,0,0.1);">Dekade ${2020 + (d*10)}s</div>`;
+                    for(let y=1; y<=10; y++) {
+                        tier3.innerHTML += `<div class="header-cell" style="width: 40px; height: 20px;">'${(2026 + (d*10) + y - 1).toString().slice(2)}</div>`;
+                    }
+                }
+                header.append(tier1, tier2, tier3);
+            }
+        }
+
+        /* ==============================================================
+           2. SIDEBAR, INLINE EDIT TITTLE, & NYELIP BARIS
+           ============================================================== */
+        function renderSidebar() {
+            const container = document.getElementById('sidebarTaskRows');
+            container.innerHTML = '';
+
+            tasksData.forEach((task, index) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'task-row-wrapper';
+                wrapper.dataset.index = index;
+
+                const row = document.createElement('div');
+                row.className = 'task-row-node';
+                row.draggable = true;
+                row.dataset.id = task.id;
+
+                row.innerHTML = `
+                    <span class="drag-handle">⠿</span>
+                    <span class="task-title-text" ondblclick="enableInlineEdit('${task.id}')" id="title-txt-${task.id}">${task.title}</span>
+                    <div class="task-actions">
+                        <button class="action-icon" title="Deskripsi (Window)" onclick="openDescModal('${task.id}')">📝</button>
+                        <button class="action-icon" title="Hapus" onclick="deleteTask('${task.id}')">🗑️</button>
+                    </div>
+                `;
+
+                // Drag Events Sidebar
+                row.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', task.id); row.classList.add('dragging'); });
+                row.addEventListener('dragend', () => row.classList.remove('dragging'));
+                row.addEventListener('dragover', e => { e.preventDefault(); row.classList.add('drag-over'); });
+                row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+                row.addEventListener('drop', handleDropSidebar);
+
+                // Hover Insert Line di Bawah Baris Ini
+                const insertLine = document.createElement('div');
+                insertLine.className = 'insert-hover-line';
+                insertLine.innerHTML = `<div class="insert-btn-circle">+</div>`;
+                insertLine.onclick = (e) => showInlineInput(wrapper, index);
+
+                wrapper.appendChild(row);
+                wrapper.appendChild(insertLine);
+                container.appendChild(wrapper);
+            });
+        }
+
+        // --- Fitur Klik 2x Edit Nama (Inline Edit) ---
+        function enableInlineEdit(id) {
+            const titleSpan = document.getElementById(`title-txt-${id}`);
+            const currentTitle = titleSpan.innerText;
+            titleSpan.outerHTML = `<input type="text" class="inline-edit-input" id="edit-inp-${id}" value="${currentTitle}" onblur="saveInlineEdit('${id}')" onkeydown="if(event.key==='Enter') this.blur();">`;
+            document.getElementById(`edit-inp-${id}`).focus();
+        }
+        async function saveInlineEdit(id) {
+            const inp = document.getElementById(`edit-inp-${id}`);
+            const newTitle = inp.value.trim();
+            const task = tasksData.find(t => t.id === id);
+            if (newTitle && newTitle !== task.title) {
+                task.title = newTitle;
+                await supabase.from('tasks').update({ title: newTitle }).eq('id', id);
+            }
+            renderSidebar(); // Rerender
+        }
+
+        // --- Fitur Nyelip (Inline Add) ---
+        function showInlineInputAtBottom() {
+            showInlineInput(document.getElementById('sidebarTaskRows'), tasksData.length - 1, true);
+        }
+        
+        function showInlineInput(targetWrapper, targetIndex, isBottom = false) {
+            if(document.getElementById('tempInlineForm')) document.getElementById('tempInlineFormBerikut adalah kode HTML utuh dan lengkap yang sudah diperbaiki secara menyeluruh sesuai dengan permintaan Anda. Tidak ada potongan, Anda bisa langsung menyalin semuanya (atau *download* sebagai `.html`) dan menjalankannya.
+
+**Perbaikan yang Dilakukan (Sesuai List Anda):**
+1. **Inline Hover "Nyelip" (+):** Fitur penambahan task lewat tombol `+` di garis bawah task kini benar-benar menyisipkan input langsung di bawah task tersebut (tidak lagi terlempar ke ujung atas).
+2. **Drag & Drop Berfungsi:** Fungsi *drag-and-drop* pada baris task di sebelah kiri kini berfungsi untuk menyusun ulang urutan (reorder).
+3. **Edit Nama Inline & Deskripsi Modal:** Tombol edit (✏️) sekarang akan mengubah teks judul langsung di baris tersebut menjadi *input field* (tekan Enter untuk simpan). Modal window baru hanya terbuka jika Anda mengklik tombol deskripsi (📝).
+4. **Gantt Slider Interaktif:** Bar pada Gantt Chart kini bisa di-*drag* untuk memindahkan tanggal (kiri-kanan) dan *handle* di ujung kiri/kanan bar kini berfungsi nyata untuk memanjangkan/memendekkan durasi task secara visual dan otomatis tersimpan ke *database*.
+5. **Merged Titles (Header Hierarki):** Header timeline sudah dirombak.
+   - *Yearly*: Menampilkan Tahun (2026) -> Bulan -> Minggu.
+   - *5 Years*: Menampilkan Tahun -> Kuartal (Q1, Q2, dst).
+   - *Lifetime*: Menampilkan Rentang Dekade (10 Tahun) -> Tahun individual.
+
+### Kode Lengkap `index.html`
+
+```html
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PWA Custom Gantt Chart - Power Edition v2</title>
+    <!-- Supabase JS Client via ESM CDN -->
+    <script type="module">
+        import { createClient } from '[https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm](https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm)';
         window.createClient = createClient;
     </script>
     <style>
@@ -20,682 +392,51 @@
             --accent-blue: #38bdf8;
             --accent-green: #22c55e;
             --accent-red: #ef4444;
-            --accent-purple: #c084fc;
-            --sidebar-width: 340px;
+            --accent-yellow: #fbbf24;
+            --sidebar-width: 360px;
             --row-height: 44px;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
         body { background-color: var(--bg-dark); color: var(--text-main); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
-        /* Login Screen Overlay */
-        #authScreen {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: var(--bg-dark); z-index: 1000;
-            display: flex; align-items: center; justify-content: center;
-        }
-        .auth-card {
-            background: var(--bg-panel); border: 1px solid var(--border-color);
-            padding: 30px; border-radius: 12px; width: 350px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        }
+        /* Login Screen */
+        #authScreen { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg-dark); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+        .auth-card { background: var(--bg-panel); border: 1px solid var(--border-color); padding: 30px; border-radius: 12px; width: 350px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
         .auth-card h2 { margin-bottom: 20px; font-size: 1.2rem; text-align: center; }
-        .auth-input {
-            width: 100%; padding: 10px; margin-bottom: 12px; background: var(--bg-dark);
-            border: 1px solid var(--border-color); color: var(--text-main); border-radius: 6px;
-        }
-        .auth-btn {
-            width: 100%; padding: 10px; background: var(--accent-blue); color: #0f172a;
-            font-weight: 600; border: none; border-radius: 6px; cursor: pointer; margin-top: 8px;
-        }
+        .auth-input { width: 100%; padding: 10px; margin-bottom: 12px; background: var(--bg-dark); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 6px; }
+        .auth-btn { width: 100%; padding: 10px; background: var(--accent-blue); color: #0f172a; font-weight: 600; border: none; border-radius: 6px; cursor: pointer; margin-top: 8px; }
         .auth-btn:hover { background: #0ea5e9; }
         .auth-toggle { text-align: center; margin-top: 12px; font-size: 0.85rem; color: var(--text-muted); cursor: pointer; }
         .auth-toggle:hover { color: var(--accent-blue); }
 
-        /* Top Header */
-        header {
-            height: 60px; background-color: var(--bg-panel); border-bottom: 1px solid var(--border-color);
-            display: flex; align-items: center; justify-content: space-between; padding: 0 20px; flex-shrink: 0;
-        }
+        /* Header Apps */
+        header { height: 60px; background-color: var(--bg-panel); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; flex-shrink: 0; z-index: 100; }
         .header-title { display: flex; align-items: center; gap: 12px; }
         .header-title h1 { font-size: 1.1rem; font-weight: 600; }
         .badge-pwa { background: rgba(56, 189, 248, 0.15); color: var(--accent-blue); font-size: 0.75rem; padding: 3px 8px; border-radius: 12px; }
         .header-controls { display: flex; align-items: center; gap: 12px; }
-        .view-switcher {
-            background: var(--bg-dark); border: 1px solid var(--border-color); color: var(--text-main);
-            padding: 6px 12px; border-radius: 6px; font-size: 0.85rem; cursor: pointer;
-        }
+        .view-switcher { background: var(--bg-dark); border: 1px solid var(--border-color); color: var(--text-main); padding: 6px 12px; border-radius: 6px; font-size: 0.85rem; cursor: pointer; outline: none; }
         .view-switcher:hover { border-color: var(--accent-blue); background: var(--bg-hover); }
 
         /* Main Layout */
         .app-container { display: flex; flex: 1; overflow: hidden; position: relative; }
         .desktop-view { display: flex; width: 100%; height: 100%; overflow: hidden; }
         
-        .task-sidebar {
-            width: var(--sidebar-width); background-color: var(--bg-panel); border-right: 1px solid var(--border-color);
-            display: flex; flex-direction: column; flex-shrink: 0; z-index: 10;
-        }
-        .sidebar-header {
-            height: 54px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center;
-            justify-content: space-between; padding: 0 16px; font-weight: 600; font-size: 0.85rem; color: var(--text-muted);
-        }
-        .sidebar-body { flex: 1; overflow-y: auto; overflow-x: hidden; }
+        /* Sidebar Tasks */
+        .task-sidebar { width: var(--sidebar-width); background-color: var(--bg-panel); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; flex-shrink: 0; z-index: 10; }
+        .sidebar-header { height: 54px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; font-weight: 600; font-size: 0.85rem; color: var(--text-muted); flex-shrink: 0; }
+        .sidebar-body { flex: 1; overflow-y: auto; overflow-x: hidden; padding-bottom: 50px; }
         
-        /* Task Row & Hover Middle Line Trigger */
-        .task-row-wrapper {
-            position: relative;
-        }
-        .task-row-node {
-            height: var(--row-height); display: flex; align-items: center; padding: 0 12px;
-            border-bottom: 1px solid var(--border-color); gap: 6px; font-size: 0.85rem; background: var(--bg-panel);
-            user-select: none; transition: background 0.15s;
-        }
+        .task-row-wrapper { position: relative; }
+        .task-row-node { height: var(--row-height); display: flex; align-items: center; padding: 0 12px; border-bottom: 1px solid var(--border-color); gap: 6px; font-size: 0.85rem; background: var(--bg-panel); transition: background 0.15s; }
         .task-row-node:hover { background-color: var(--bg-hover); }
-        .task-row-node.dragging { opacity: 0.4; background: var(--accent-blue); }
-        .task-row-node.drag-over { border-top: 2px dashed var(--accent-blue); }
+        .task-row-node.dragging { opacity: 0.5; background: var(--bg-hover); }
+        .task-row-node.drag-over { border-bottom: 2px dashed var(--accent-blue); }
 
-        .drag-handle { color: var(--text-muted); cursor: grab; font-size: 1rem; letter-spacing: -2px; }
+        .drag-handle { color: var(--text-muted); cursor: grab; font-size: 1rem; letter-spacing: -2px; padding: 0 4px; }
         .drag-handle:active { cursor: grabbing; }
 
-        .chevron { cursor: pointer; width: 14px; text-align: center; color: var(--text-muted); font-size: 0.7rem; transition: transform 0.2s; }
-        .chevron.collapsed { transform: rotate(-90deg); }
-
-        .task-title-text { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        
-        .level-0 { padding-left: 0px; }
-        .level-1 { padding-left: 14px; }
-        .level-2 { padding-left: 28px; }
-        .level-3 { padding-left: 42px; }
-        .level-4 { padding-left: 56px; }
-
-        .task-actions { display: flex; gap: 2px; opacity: 0; transition: opacity 0.2s; }
-        .task-row-node:hover .task-actions { opacity: 1; }
-        .action-icon { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 0.8rem; padding: 2px 4px; border-radius: 4px; }
-        .action-icon:hover { color: var(--text-main); background: var(--bg-dark); }
-
-        /* Middle Row Insertion Hover Line (+) */
-        .insert-hover-line {
-            position: absolute; bottom: -8px; left: 0; right: 0; height: 16px;
-            z-index: 20; display: flex; align-items: center; justify-content: center;
-            cursor: pointer; opacity: 0; transition: opacity 0.2s;
-        }
-        .task-row-wrapper:hover .insert-hover-line { opacity: 1; }
-        .insert-hover-line::before {
-            content: ""; position: absolute; left: 0; right: 0; height: 2px; background: var(--accent-green);
-        }
-        .insert-btn-circle {
-            background: var(--accent-green); color: #0f172a; width: 20px; height: 20px;
-            border-radius: 50%; display: flex; align-items: center; justify-content: center;
-            font-weight: bold; font-size: 0.85rem; z-index: 21; box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        }
-
-        /* Inline Input Animatif */
-        .task-inline-input-row {
-            height: var(--row-height); display: flex; align-items: center; padding: 0 12px;
-            border-bottom: 2px solid var(--accent-green); background: rgba(34, 197, 94, 0.05);
-            animation: slideDown 0.2s ease-out forwards;
-        }
-        @keyframes slideDown {
-            from { opacity: 0; transform: translateY(-8px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .inline-task-input {
-            flex: 1; background: var(--bg-dark); border: 1px solid var(--accent-green);
-            color: var(--text-main); padding: 5px 8px; border-radius: 4px; font-size: 0.85rem; outline: none;
-        }
-
-        /* Timeline Canvas */
-        .timeline-container { flex: 1; display: flex; flex-direction: column; overflow-x: auto; background-color: var(--bg-dark); position: relative; }
-        
-        .timeline-header-scroll {
-            height: 54px; border-bottom: 1px solid var(--border-color); display: flex;
-            background-color: var(--bg-panel); position: sticky; top: 0; z-index: 5;
-        }
-        .timeline-header-cell {
-            border-right: 1px solid var(--border-color); display: flex; flex-direction: column;
-            align-items: center; justify-content: center; font-size: 0.7rem; color: var(--text-muted);
-            padding: 0 4px; text-align: center; flex-shrink: 0;
-        }
-        .timeline-header-cell span.sub-context { font-size: 0.6rem; color: var(--accent-blue); opacity: 0.8; margin-top: 1px; }
-
-        .timeline-body { flex: 1; overflow-y: auto; position: relative; }
-        .timeline-row { height: var(--row-height); border-bottom: 1px solid var(--border-color); position: relative; display: flex; align-items: center; }
-        
-        .grid-bg-lines { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; pointer-events: none; z-index: 1; }
-        .grid-col-line { border-right: 1px dashed var(--border-color); opacity: 0.4; flex-shrink: 0; }
-        
-        /* Gantt Bar & Interactive Resizing Handles */
-        .gantt-bar {
-            position: absolute; height: 26px; background: linear-gradient(90deg, #0284c7, #38bdf8);
-            border-radius: 6px; top: 9px; z-index: 2; display: flex; align-items: center; justify-content: space-between;
-            padding: 0 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); cursor: move;
-        }
-        .gantt-bar-handle {
-            width: 6px; height: 16px; background: rgba(255,255,255,0.6); border-radius: 3px; cursor: ew-resize;
-        }
-        .gantt-bar-title { font-size: 0.7rem; color: #fff; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 4px; flex: 1; }
-
-        .current-time-indicator { position: absolute; top: 0; bottom: 0; width: 3px; background-color: var(--accent-red); z-index: 4; pointer-events: none; }
-        .current-time-indicator::before {
-            content: "TODAY"; position: absolute; top: 2px; left: -18px; background: var(--accent-red);
-            color: white; font-size: 0.55rem; padding: 1px 3px; border-radius: 2px; font-weight: bold;
-        }
-
-        /* Modal Overlay for Info/Edit */
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6);
-            z-index: 2000; display: none; align-items: center; justify-content: center;
-        }
-        .modal-card {
-            background: var(--bg-panel); border: 1px solid var(--border-color); width: 400px;
-            padding: 24px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-        }
-        .modal-card h3 { margin-bottom: 16px; font-size: 1.1rem; }
-        .modal-field { margin-bottom: 12px; }
-        .modal-field label { display: block; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px; }
-        .modal-field input, .modal-field textarea {
-            width: 100%; background: var(--bg-dark); border: 1px solid var(--border-color);
-            color: var(--text-main); padding: 8px; border-radius: 6px; font-size: 0.85rem;
-        }
-        .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
-
-        /* Mobile Agenda View */
-        .mobile-view { display: none; width: 100%; height: 100%; overflow-y: auto; padding: 16px; background: var(--bg-dark); }
-        .mobile-card { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px; margin-bottom: 12px; }
-        body.is-mobile-mode .desktop-view { display: none; }
-        body.is-mobile-mode .mobile-view { display: block; }
-    </style>
-</head>
-<body>
-
-    <!-- LOGIN / REGISTER SCREEN -->
-    <div id="authScreen">
-        <div class="auth-card">
-            <h2 id="authTitle">Login Gantt Chart</h2>
-            <input type="email" id="authEmail" class="auth-input" placeholder="Email Anda" />
-            <input type="password" id="authPassword" class="auth-input" placeholder="Password" />
-            <button class="auth-btn" id="authSubmitBtn" onclick="handleAuth()">Masuk</button>
-            <div class="auth-toggle" onclick="toggleAuthMode()" id="authToggleText">Belum punya akun? Daftar</div>
-        </div>
-    </div>
-
-    <!-- MODAL POPUP (Info & Edit) -->
-    <div class="modal-overlay" id="taskModal">
-        <div class="modal-card">
-            <h3 id="modalTitleText">Detail Task</h3>
-            <div class="modal-field">
-                <label>Judul Task</label>
-                <input type="text" id="modalInputTitle" />
-            </div>
-            <div class="modal-field">
-                <label>Deskripsi / Catatan Detail</label>
-                <textarea id="modalInputDesc" rows="4" placeholder="Tulis catatan atau detail sub-proyek di sini..."></textarea>
-            </div>
-            <div style="display: flex; gap: 10px;">
-                <div class="modal-field" style="flex:1;">
-                    <label>Start Date</label>
-                    <input type="date" id="modalInputStart" />
-                </div>
-                <div class="modal-field" style="flex:1;">
-                    <label>End Date</label>
-                    <input type="date" id="modalInputEnd" />
-                </div>
-            </div>
-            <div class="modal-actions">
-                <button class="view-switcher" onclick="closeModal()">Batal</button>
-                <button class="view-switcher" style="background: var(--accent-blue); color: #0f172a; font-weight:600;" onclick="saveModalTask()">Simpan</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- MAIN APP -->
-    <header>
-        <div class="header-title">
-            <h1>PWA Custom Gantt Chart</h1>
-            <span class="badge-pwa" id="userEmailBadge">Connected</span>
-        </div>
-        <div class="header-controls">
-            <select class="view-switcher" id="timeScaleSelect" onchange="changeTimeScale(this.value)">
-                <option value="yearly">Yearly (52 Minggu)</option>
-                <option value="5years">5 Years (20 Kuartal)</option>
-                <option value="lifetime">Lifetime (Tahun s.d. 2100)</option>
-            </select>
-            <button class="view-switcher" onclick="toggleMobileView()" id="modeToggleBtn">📱 Mobile View</button>
-            <button class="view-switcher" onclick="handleLogout()" style="color: var(--accent-red);">Logout</button>
-        </div>
-    </header>
-
-    <div class="app-container">
-        <div class="desktop-view" id="desktopView">
-            <div class="task-sidebar">
-                <div class="sidebar-header">
-                    <span>Task Hierarchy (0-4)</span>
-                    <button class="action-icon" onclick="showInlineInput(null)" title="Tambah Task di Paling Bawah" style="font-size: 1rem; color: var(--accent-green);">＋</button>
-                </div>
-                <div class="sidebar-body" id="sidebarTaskRows"></div>
-            </div>
-            <div class="timeline-container" id="timelineContainer">
-                <div class="timeline-header-scroll" id="timelineHeader"></div>
-                <div class="timeline-body" id="timelineBodyRows">
-                    <div class="current-time-indicator" id="currentTimeLine"></div>
-                </div>
-            </div>
-        </div>
-        <div class="mobile-view" id="mobileView">
-            <div id="mobileCardsContainer"></div>
-        </div>
-    </div>
-
-    <script>
-        let supabaseClient = null;
-        let tasksData = [];
-        let currentScale = 'yearly'; // yearly | 5years | lifetime
-        let isSignUpMode = false;
-        let currentUser = null;
-        let isMobileMode = false;
-        let activeModalTaskId = null;
-
-        // Rentang Timeline Global
-        const timelineEpochStart = new Date('2026-01-01');
-
-        window.addEventListener('DOMContentLoaded', async () => {
-            const SUPABASE_URL = 'https://movcjscdntwckaslnumn.supabase.co';
-            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vdmNqc2NkbnR3Y2thc2xudW1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUwNDU3ODUsImV4cCI6MjEwMDYyMTc4NX0.rGYGREApohqwSaArGr4DtZXeuUJ0OUE7QeOyNjpswv8';
-
-            if (window.createClient) {
-                supabaseClient = window.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                checkUserSession();
-            } else {
-                alert('Gagal memuat pustaka Supabase.');
-            }
-        });
-
-        async function checkUserSession() {
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            if (session) {
-                currentUser = session.user;
-                document.getElementById('authScreen').style.display = 'none';
-                document.getElementById('userEmailBadge').innerText = currentUser.email;
-                fetchTasks();
-            }
-        }
-
-        async function handleAuth() {
-            const email = document.getElementById('authEmail').value.trim();
-            const pass = document.getElementById('authPassword').value.trim();
-            if(!email || !pass) return alert('Masukkan email & password!');
-
-            try {
-                if(isSignUpMode) {
-                    const { error } = await supabaseClient.auth.signUp({ email, password: pass });
-                    if(error) throw error;
-                    alert('Daftar berhasil! Silakan login.');
-                    isSignUpMode = false; toggleAuthMode();
-                } else {
-                    const { error } = await supabaseClient.auth.signInWithPassword({ email, password: pass });
-                    if(error) throw error;
-                    location.reload();
-                }
-            } catch (err) { alert(err.message); }
-        }
-
-        function toggleAuthMode() {
-            isSignUpMode = !isSignUpMode;
-            document.getElementById('authTitle').innerText = isSignUpMode ? 'Daftar Akun Baru' : 'Login Gantt Chart';
-            document.getElementById('authSubmitBtn').innerText = isSignUpMode ? 'Daftar' : 'Masuk';
-            document.getElementById('authToggleText').innerText = isSignUpMode ? 'Sudah punya akun? Login' : 'Belum punya akun? Daftar';
-        }
-
-        async function handleLogout() {
-            await supabaseClient.auth.signOut();
-            location.reload();
-        }
-
-        async function fetchTasks() {
-            const { data, error } = await supabaseClient.from('tasks').select('*').order('sort_order', { ascending: true });
-            if(!error) {
-                tasksData = data || [];
-                renderAll();
-            }
-        }
-
-        function renderAll() {
-            renderTimelineHeader();
-            renderSidebarTasks();
-            renderTimelineBars();
-            renderMobileCards();
-            updateCurrentTimeIndicator();
-        }
-
-        function changeTimeScale(scale) {
-            currentScale = scale;
-            renderAll();
-        }
-
-        /* --- TIMELINE HEADER & KONTEKS WAKTU (TAHUN, BULAN, KUARTAL) --- */
-        function renderTimelineHeader() {
-            const header = document.getElementById('timelineHeader');
-            header.innerHTML = '';
-            
-            if (currentScale === 'yearly') {
-                header.style.minWidth = '2080px'; // 52 kolom x 40px
-                for (let i = 1; i <= 52; i++) {
-                    const cell = document.createElement('div');
-                    cell.className = 'timeline-header-cell';
-                    cell.style.width = '40px';
-                    // Konteks estimasi bulan dalam tahun 2026
-                    let monthName = getMonthNameForWeek(i);
-                    cell.innerHTML = `W${i}<span class="sub-context">${monthName}</span>`;
-                    header.appendChild(cell);
-                }
-            } else if (currentScale === '5years') {
-                header.style.minWidth = '1600px'; // 20 kuartal x 80px
-                const quarters = [
-                    {q: "Q1", range: "Jan-Mar"}, {q: "Q2", range: "Apr-Jun"}, {q: "Q3", range: "Jul-Sep"}, {q: "Q4", range: "Okt-Des"}
-                ];
-                for (let i = 0; i < 20; i++) {
-                    let year = 2026 + Math.floor(i / 4);
-                    let qObj = quarters[i % 4];
-                    const cell = document.createElement('div');
-                    cell.className = 'timeline-header-cell';
-                    cell.style.width = '80px';
-                    cell.innerHTML = `${qObj.q} '${year.toString().slice(-2)}<span class="sub-context">${qObj.range}</span>`;
-                    header.appendChild(cell);
-                }
-            } else if (currentScale === 'lifetime') {
-                header.style.minWidth = '1800px'; // Tahun 2026 s.d 2100 (75 tahun, tiap kolom setara beberapa tahun/1 kolom per tahun)
-                for (let y = 2026; y <= 2100; y++) {
-                    const cell = document.createElement('div');
-                    cell.className = 'timeline-header-cell';
-                    cell.style.width = '35px';
-                    cell.innerHTML = `${y}<span class="sub-context">Thn</span>`;
-                    header.appendChild(cell);
-                }
-            }
-        }
-
-        function getMonthNameForWeek(weekNum) {
-            const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ags", "Sep", "Okt", "Nov", "Des"];
-            let mIndex = Math.floor((weekNum - 1) / 4.33);
-            return months[Math.min(mIndex, 11)];
-        }
-
-        /* --- SIDEBAR & DRAG AND DROP (6-DOTS REORDERING & HIERARCHY INDENT) --- */
-        function renderSidebarTasks() {
-            const container = document.getElementById('sidebarTaskRows');
-            container.innerHTML = '';
-
-            tasksData.forEach((task, index) => {
-                const wrapper = document.createElement('div');
-                wrapper.className = 'task-row-wrapper';
-
-                const row = document.createElement('div');
-                row.className = `task-row-node level-${task.level || 0}`;
-                row.draggable = true;
-                row.dataset.id = task.id;
-                row.dataset.index = index;
-
-                row.innerHTML = `
-                    <span class="drag-handle" title="Geser untuk menyusun ulang">⠿</span>
-                    <span class="chevron ${task.is_expanded !== false ? '' : 'collapsed'}" onclick="toggleExpand('${task.id}')">▼</span>
-                    <span class="task-title-text" title="${task.title}">${task.title}</span>
-                    <div class="task-actions">
-                        <button class="action-icon" title="Info & Deskripsi" onclick="openModal('${task.id}')">📝</button>
-                        <button class="action-icon" title="Edit Data" onclick="openModal('${task.id}')">✏️</button>
-                        <button class="action-icon" title="Hapus Task" onclick="deleteTask('${task.id}')">🗑️</button>
-                    </div>
-                `;
-
-                // Drag and Drop Events
-                row.addEventListener('dragstart', handleDragStart);
-                row.addEventListener('dragover', handleDragOver);
-                row.addEventListener('dragleave', handleDragLeave);
-                row.addEventListener('drop', handleDrop);
-                row.addEventListener('dragend', handleDragEnd);
-
-                wrapper.appendChild(row);
-
-                // Inline hover trigger button (+) di antara baris
-                const insertLine = document.createElement('div');
-                insertLine.className = 'insert-hover-line';
-                insertLine.innerHTML = `<div class="insert-btn-circle" title="Sisipkan task di sini">＋</div>`;
-                insertLine.onclick = () => showInlineInput(task.sort_order + 1);
-                wrapper.appendChild(insertLine);
-
-                container.appendChild(wrapper);
-            });
-        }
-
-        let draggedTaskId = null;
-
-        function handleDragStart(e) {
-            draggedTaskId = this.dataset.id;
-            this.classList.add('dragging');
-            e.dataTransfer.effectAllowed = 'move';
-        }
-
-        function handleDragOver(e) {
-            e.preventDefault();
-            this.classList.add('drag-over');
-        }
-
-        function handleDragLeave(e) {
-            this.classList.remove('drag-over');
-        }
-
-        async function handleDrop(e) {
-            e.preventDefault();
-            this.classList.remove('drag-over');
-            const targetId = this.dataset.id;
-            if (draggedTaskId === targetId) return;
-
-            let sourceIndex = tasksData.findIndex(t => t.id === draggedTaskId);
-            let targetIndex = tasksData.findIndex(t => t.id === targetId);
-
-            if (sourceIndex > -1 && targetIndex > -1) {
-                let [movedTask] = tasksData.splice(sourceIndex, 1);
-                tasksData.splice(targetIndex, 0, movedTask);
-
-                // Update sort_order di database Supabase
-                for (let i = 0; i < tasksData.length; i++) {
-                    tasksData[i].sort_order = i;
-                    await supabaseClient.from('tasks').update({ sort_order: i }).eq('id', tasksData[i].id);
-                }
-                renderAll();
-            }
-        }
-
-        function handleDragEnd(e) {
-            this.classList.remove('dragging');
-            document.querySelectorAll('.task-row-node').forEach(el => el.classList.remove('drag-over'));
-        }
-
-        // Inline Input Animatif di Sidebar
-        function showInlineInput(afterSortOrder) {
-            if (document.getElementById('inlineTaskInputRow')) return;
-
-            const container = document.getElementById('sidebarTaskRows');
-            const inputRow = document.createElement('div');
-            inputRow.className = 'task-inline-input-row';
-            inputRow.id = 'inlineTaskInputRow';
-            inputRow.innerHTML = `
-                <span style="color: var(--accent-green); margin-right: 6px;">⚡</span>
-                <input type="text" id="inlineTaskInput" class="inline-task-input" placeholder="Ketik nama task baru, tekan Enter..." autocomplete="off" />
-            `;
-            container.prepend(inputRow);
-
-            const inputElem = document.getElementById('inlineTaskInput');
-            inputElem.focus();
-
-            inputElem.addEventListener('keydown', async (e) => {
-                if (e.key === 'Enter') {
-                    const title = inputElem.value.trim();
-                    if (title) {
-                        await saveNewTaskInline(title, afterSortOrder !== null ? afterSortOrder : 0);
-                    } else {
-                        inputRow.remove();
-                    }
-                } else if (e.key === 'Escape') {
-                    inputRow.remove();
-                }
-            });
-
-            inputElem.addEventListener('blur', () => {
-                setTimeout(() => { if(document.getElementById('inlineTaskInputRow')) inputRow.remove(); }, 200);
-            });
-        }
-
-        async function saveNewTaskInline(title, sortOrder) {
-            const todayStr = new Date().toISOString().split('T')[0];
-            const { error } = await supabaseClient.from('tasks').insert([{
-                user_id: currentUser.id,
-                title: title,
-                description: '',
-                start_date: todayStr,
-                end_date: '2026-12-31',
-                level: 0,
-                sort_order: sortOrder
-            }]);
-
-            if(!error) fetchTasks();
-        }
-
-        /* --- TIMELINE BARS & KOORDINAT GANTT SLIDER --- */
-        function renderTimelineBars() {
-            const bodyRows = document.getElementById('timelineBodyRows');
-            const indicator = document.getElementById('currentTimeLine');
-            bodyRows.innerHTML = '';
-            bodyRows.appendChild(indicator);
-
-            let totalCols = currentScale === 'yearly' ? 52 : (currentScale === '5years' ? 20 : 75);
-            let colWidth = currentScale === 'yearly' ? 40 : (currentScale === '5years' ? 80 : 35);
-            let totalTimelineWidth = totalCols * colWidth;
-
-            tasksData.forEach((task) => {
-                const row = document.createElement('div');
-                row.className = 'timeline-row';
-                row.style.width = `${totalTimelineWidth}px`;
-                
-                const bgLines = document.createElement('div');
-                bgLines.className = 'grid-bg-lines';
-                for(let i=0; i<totalCols; i++) {
-                    const line = document.createElement('div');
-                    line.className = 'grid-col-line';
-                    line.style.width = `${colWidth}px`;
-                    bgLines.appendChild(line);
-                }
-                row.appendChild(bgLines);
-
-                // Kalkulasi Koordinat Tanggal ke Posisi Pixel CSS Grid
-                let coords = dateToCoordinates(task.start_date, task.end_date, totalCols, colWidth);
-
-                const bar = document.createElement('div');
-                bar.className = 'gantt-bar';
-                bar.style.left = `${coords.left}px`;
-                bar.style.width = `${coords.width}px`;
-                bar.dataset.id = task.id;
-
-                bar.innerHTML = `
-                    <div class="gantt-bar-handle left" onmousedown="initResize(event, '${task.id}', 'left')"></div>
-                    <span class="gantt-bar-title">${task.title}</span>
-                    <div class="gantt-bar-handle right" onmousedown="initResize(event, '${task.id}', 'right')"></div>
-                `;
-                row.appendChild(bar);
-                bodyRows.appendChild(row);
-            });
-        }
-
-        function dateToCoordinates(startDateStr, endDateStr, totalCols, colWidth) {
-            let start = new Date(startDateStr);
-            let end = new Date(endDateStr);
-            let diffDaysStart = (start - timelineEpochStart) / (1000 * 60 * 60 * 24);
-            let diffDaysEnd = (end - timelineEpochStart) / (1000 * 60 * 60 * 24);
-
-            let unitDays = currentScale === 'yearly' ? 7 : (currentScale === '5years' ? 91.25 : 365);
-            let leftPos = (diffDaysStart / unitDays) * colWidth;
-            let durationDays = Math.max(diffDaysEnd - diffDaysStart, 7);
-            let widthPx = (durationDays / unitDays) * colWidth;
-
-            return { left: Math.max(leftPos, 0), width: Math.max(widthPx, 20) };
-        }
-
-        function updateCurrentTimeIndicator() {
-            const indicator = document.getElementById('currentTimeLine');
-            let now = new Date();
-            let diffDays = (now - timelineEpochStart) / (1000 * 60 * 60 * 24);
-            let unitDays = currentScale === 'yearly' ? 7 : (currentScale === '5years' ? 91.25 : 365);
-            let colWidth = currentScale === 'yearly' ? 40 : (currentScale === '5years' ? 80 : 35);
-            let posPx = (diffDays / unitDays) * colWidth;
-            indicator.style.left = `${Math.max(posPx, 0)}px`;
-        }
-
-        /* --- MODAL INFO & EDIT --- */
-        function openModal(id) {
-            activeModalTaskId = id;
-            const task = tasksData.find(t => t.id === id);
-            if(task) {
-                document.getElementById('modalTitleText').innerText = `Edit: ${task.title}`;
-                document.getElementById('modalInputTitle').value = task.title;
-                document.getElementById('modalInputDesc').value = task.description || '';
-                document.getElementById('modalInputStart').value = task.start_date;
-                document.getElementById('modalInputEnd').value = task.end_date;
-                document.getElementById('taskModal').style.display = 'flex';
-            }
-        }
-
-        function closeModal() {
-            document.getElementById('taskModal').style.display = 'none';
-            activeModalTaskId = null;
-        }
-
-        async function saveModalTask() {
-            if(!activeModalTaskId) return;
-            const title = document.getElementById('modalInputTitle').value;
-            const description = document.getElementById('modalInputDesc').value;
-            const start_date = document.getElementById('modalInputStart').value;
-            const end_date = document.getElementById('modalInputEnd').value;
-
-            const { error } = await supabaseClient.from('tasks').update({
-                title, description, start_date, end_date
-            }).eq('id', activeModalTaskId);
-
-            if(!error) {
-                closeModal();
-                fetchTasks();
-            } else {
-                alert(error.message);
-            }
-        }
-
-        async function deleteTask(id) {
-            if(!confirm("Yakin ingin menghapus task ini?")) return;
-            const { error } = await supabaseClient.from('tasks').delete().eq('id', id);
-            if(!error) fetchTasks();
-        }
-
-        function toggleExpand(id) {
-            const task = tasksData.find(t => t.id === id);
-            if(task) {
-                task.is_expanded = task.is_expanded === false ? true : false;
-                renderSidebarTasks();
-            }
-        }
-
-        function toggleMobileView() {
-            isMobileMode = !isMobileMode;
-            document.body.classList.toggle('is-mobile-mode', isMobileMode);
-            document.getElementById('modeToggleBtn').innerText = isMobileMode ? '💻 Desktop View' : '📱 Mobile View';
-        }
-
-        function renderMobileCards() {
-            const container = document.getElementById('mobileCardsContainer');
-            container.innerHTML = '';
-            tasksData.forEach(task => {
-                const card = document.createElement('div');
-                card.className = 'mobile-card';
-                card.innerHTML = `<strong>${task.title}</strong><div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">📅 ${task.start_date} s.d. ${task.end_date}</div>`;
-                container.appendChild(card);
-            });
-        }
-    </script>
-</body>
-</html>
+        .chevron { cursor: pointer; width: 14px; text-align: center; color: var(--text-muted); font-size: 0.7rem; }
+        .task-title-text { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 4px; border-radius: 4px; }
+        .task-title-input { flex: 1; background: var(--bg-dark); border: 1px solid var(--accent-blue); color: #fff; padding: 3px 6px; border-radius: 4px; font-size: 0.85rem; outline: none; width: 100%;
