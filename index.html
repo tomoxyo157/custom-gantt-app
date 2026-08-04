@@ -40,8 +40,9 @@
         .task-row-node { height: var(--row-height); display: flex; align-items: center; padding: 0 12px; border-bottom: 1px solid var(--border-color); gap: 6px; font-size: 0.85rem; background: var(--bg-panel); transition: background 0.15s; }
         .task-row-node:hover { background-color: var(--bg-hover); }
         .task-row-node.drag-over { border-top: 2px dashed var(--accent-blue); }
-        .task-row-node.dragging { opacity: 0.5; }
+        .task-row-node.dragging { opacity: 0.4; }
         .drag-handle { color: var(--text-muted); cursor: grab; font-size: 1rem; }
+        .drag-handle:active { cursor: grabbing; }
         .task-title-text { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
         .task-title-text:hover { color: var(--accent-blue); }
         
@@ -160,11 +161,21 @@
 
         let activeModalTaskId = null;
         let colWidthConfig = 40;
+        let daysPerColConfig = 7;
+
+        // Variables untuk Interactive Gantt Dragging & Resizing
+        let isDraggingGantt = false;
+        let ganttDragMode = null; // 'move', 'resize-left', 'resize-right'
+        let activeGanttTask = null;
+        let startMouseX = 0;
+        let startLeftPx = 0;
+        let startWidthPx = 0;
 
         window.addEventListener('DOMContentLoaded', () => {
             if (window.createClient) {
                 supabase = window.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 checkSession();
+                setupGlobalGanttListeners();
             }
         });
 
@@ -221,9 +232,9 @@
         function changeTimeScale(scale) { currentScale = scale; renderAll(); }
 
         function updateScaleConfig() {
-            if (currentScale === 'yearly') colWidthConfig = 40;
-            else if (currentScale === '5years') colWidthConfig = 80;
-            else colWidthConfig = 40;
+            if (currentScale === 'yearly') { colWidthConfig = 40; daysPerColConfig = 7; }
+            else if (currentScale === '5years') { colWidthConfig = 80; daysPerColConfig = 91.25; }
+            else { colWidthConfig = 40; daysPerColConfig = 365; }
         }
 
         function renderTimelineHeader() {
@@ -285,7 +296,7 @@
                 let indentPx = (task.level || 0) * 16;
 
                 row.innerHTML = `
-                    <span class="drag-handle">⠿</span>
+                    <span class="drag-handle" title="Tarik untuk ubah urutan">⠿</span>
                     <span class="task-title-text" style="padding-left: ${indentPx}px;" ondblclick="enableInlineEdit('${task.id}')" id="title-txt-${task.id}">${task.title}</span>
                     <div class="task-actions">
                         <button class="action-icon" title="Deskripsi" onclick="openDescModal('${task.id}')">📝</button>
@@ -293,9 +304,16 @@
                     </div>
                 `;
 
-                row.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', task.id); row.classList.add('dragging'); });
+                // Drag & Drop Sidebar Handler
+                row.addEventListener('dragstart', e => { 
+                    e.dataTransfer.setData('text/plain', task.id); 
+                    row.classList.add('dragging'); 
+                });
                 row.addEventListener('dragend', () => row.classList.remove('dragging'));
-                row.addEventListener('dragover', e => { e.preventDefault(); row.classList.add('drag-over'); });
+                row.addEventListener('dragover', e => { 
+                    e.preventDefault(); 
+                    row.classList.add('drag-over'); 
+                });
                 row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
                 row.addEventListener('drop', handleDropSidebar);
 
@@ -334,6 +352,7 @@
 
         function enableInlineEdit(id) {
             const titleSpan = document.getElementById(`title-txt-${id}`);
+            if(!titleSpan) return;
             const currentTitle = titleSpan.innerText;
             titleSpan.outerHTML = `<input type="text" class="inline-edit-input" id="edit-inp-${id}" value="${currentTitle}" onblur="saveInlineEdit('${id}')" onkeydown="if(event.key==='Enter') this.blur();">`;
             document.getElementById(`edit-inp-${id}`).focus();
@@ -341,6 +360,7 @@
 
         async function saveInlineEdit(id) {
             const inp = document.getElementById(`edit-inp-${id}`);
+            if(!inp) return;
             const newTitle = inp.value.trim();
             const task = tasksData.find(t => t.id === id);
             if (newTitle && newTitle !== task.title) {
@@ -361,11 +381,13 @@
             e.preventDefault();
             const draggedId = e.dataTransfer.getData('text/plain');
             const targetRow = e.currentTarget;
+            targetRow.classList.remove('drag-over');
             const targetId = targetRow.dataset.id;
-            if(draggedId === targetId) return;
+            if(!draggedId || draggedId === targetId) return;
 
             const draggedIdx = tasksData.findIndex(t => t.id === draggedId);
             const targetIdx = tasksData.findIndex(t => t.id === targetId);
+            if(draggedIdx < 0 || targetIdx < 0) return;
             
             const [movedItem] = tasksData.splice(draggedIdx, 1);
             tasksData.splice(targetIdx, 0, movedItem);
@@ -398,13 +420,13 @@
 
                 const bar = document.createElement('div');
                 bar.className = 'gantt-bar';
+                bar.dataset.id = task.id;
                 
                 const startDays = (new Date(task.start_date) - timelineEpoch) / (1000 * 60 * 60 * 24);
                 const endDays = (new Date(task.end_date) - timelineEpoch) / (1000 * 60 * 60 * 24);
                 
-                let dayScaleDivider = currentScale === 'yearly' ? 7 : (currentScale === '5years' ? 91.25 : 365);
-                let leftPx = (startDays / dayScaleDivider) * colWidthConfig;
-                let widthPx = Math.max(((endDays - startDays + 1) / dayScaleDivider) * colWidthConfig, 20);
+                let leftPx = (startDays / daysPerColConfig) * colWidthConfig;
+                let widthPx = Math.max(((endDays - startDays + 1) / daysPerColConfig) * colWidthConfig, 20);
 
                 bar.style.left = `${leftPx}px`;
                 bar.style.width = `${widthPx}px`;
@@ -416,6 +438,92 @@
 
                 row.appendChild(bar);
                 container.appendChild(row);
+            });
+        }
+
+        /* ==============================================================
+           INTERACTIVE GANTT BAR MOUSEDRAG / RESIZE LOGIC
+           ============================================================== */
+        function setupGlobalGanttListeners() {
+            const timelineContainer = document.getElementById('timelineContainer');
+
+            timelineContainer.addEventListener('mousedown', e => {
+                const bar = e.target.closest('.gantt-bar');
+                if (!bar) return;
+
+                const taskId = bar.dataset.id;
+                activeGanttTask = tasksData.find(t => t.id === taskId);
+                if (!activeGanttTask) return;
+
+                isDraggingGantt = true;
+                startMouseX = e.clientX;
+                startLeftPx = parseFloat(bar.style.left) || 0;
+                startWidthPx = parseFloat(bar.style.width) || 40;
+
+                if (e.target.classList.contains('gantt-bar-handle')) {
+                    ganttDragMode = e.target.dataset.handle === 'left' ? 'resize-left' : 'resize-right';
+                } else {
+                    ganttDragMode = 'move';
+                }
+
+                e.stopPropagation();
+            });
+
+            window.addEventListener('mousemove', e => {
+                if (!isDraggingGantt || !activeGanttTask) return;
+                const dx = e.clientX - startMouseX;
+                const bar = document.querySelector(`.gantt-bar[data-id="${activeGanttTask.id}"]`);
+                if (!bar) return;
+
+                if (ganttDragMode === 'move') {
+                    let newLeft = Math.max(0, startLeftPx + dx);
+                    bar.style.left = `${newLeft}px`;
+                } else if (ganttDragMode === 'resize-left') {
+                    let newLeft = Math.max(0, startLeftPx + dx);
+                    let newWidth = startWidthPx - dx;
+                    if (newWidth > 20) {
+                        bar.style.left = `${newLeft}px`;
+                        bar.style.width = `${newWidth}px`;
+                    }
+                } else if (ganttDragMode === 'resize-right') {
+                    let newWidth = Math.max(20, startWidthPx + dx);
+                    bar.style.width = `${newWidth}px`;
+                }
+            });
+
+            window.addEventListener('mouseup', async () => {
+                if (!isDraggingGantt || !activeGanttTask) return;
+                isDraggingGantt = false;
+
+                const bar = document.querySelector(`.gantt-bar[data-id="${activeGanttTask.id}"]`);
+                if (bar) {
+                    const finalLeft = parseFloat(bar.style.left) || 0;
+                    const finalWidth = parseFloat(bar.style.width) || 40;
+
+                    // Hitung konversi pixel ke tanggal baru
+                    const daysPerPx = daysPerColConfig / colWidthConfig;
+                    const startDayOffset = Math.round(finalLeft * daysPerPx);
+                    const durationDays = Math.max(1, Math.round(finalWidth * daysPerPx));
+
+                    const newStartDate = new Date(timelineEpoch.getTime() + startDayOffset * 86400000);
+                    const newEndDate = new Date(newStartDate.getTime() + (durationDays - 1) * 86400000);
+
+                    const fmtStart = newStartDate.toISOString().split('T')[0];
+                    const fmtEnd = newEndDate.toISOString().split('T')[0];
+
+                    activeGanttTask.start_date = fmtStart;
+                    activeGanttTask.end_date = fmtEnd;
+
+                    // Simpan perubahan ke Database Supabase
+                    await supabase.from('tasks').update({
+                        start_date: fmtStart,
+                        end_date: fmtEnd
+                    }).eq('id', activeGanttTask.id);
+                }
+
+                activeGanttTask = null;
+                ganttDragMode = null;
+                renderTimelineRows();
             });
         }
 
