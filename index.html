@@ -185,10 +185,12 @@
 
             if(isSignUpMode) {
                 const { error } = await supabase.auth.signUp({ email, password });
-                if(error) alert(error.message); else { alert('Sukses daftar! Silakan login.'); toggleAuthMode(); }
+                if(error) alert(error.message); 
+                else { alert('Sukses daftar! Silakan login.'); toggleAuthMode(); }
             } else {
                 const { error } = await supabase.auth.signInWithPassword({ email, password });
-                if(error) alert(error.message); else location.reload();
+                if(error) alert(error.message); 
+                else location.reload();
             }
         }
 
@@ -394,7 +396,6 @@
                 }
                 row.appendChild(bgLines);
 
-                // Buat Bar Gantt
                 const bar = document.createElement('div');
                 bar.className = 'gantt-bar';
                 
