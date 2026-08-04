@@ -71,9 +71,14 @@
         .app-container { display: flex; flex: 1; overflow: hidden; position: relative; }
         .desktop-view { display: flex; width: 100%; height: 100%; overflow: hidden; }
         .task-sidebar { width: var(--sidebar-width); background-color: var(--bg-panel); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; flex-shrink: 0; }
-        .sidebar-header { height: 48px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; padding: 0 16px; font-weight: 600; font-size: 0.85rem; color: var(--text-muted); }
+        .sidebar-header { height: 48px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; padding: 0 16px; font-weight: 600; font-size: 0.85rem; color: var(--text-muted); justify-content: space-between; }
         .sidebar-body { flex: 1; overflow-y: auto; }
-        .task-row-node { height: var(--row-height); display: flex; align-items: center; padding: 0 12px; border-bottom: 1px solid var(--border-color); gap: 8px; font-size: 0.9rem; background: var(--bg-panel); }
+        
+        .task-row-node {
+            height: var(--row-height); display: flex; align-items: center; padding: 0 12px;
+            border-bottom: 1px solid var(--border-color); gap: 8px; font-size: 0.9rem; background: var(--bg-panel);
+            transition: background 0.2s;
+        }
         .task-row-node:hover { background-color: var(--bg-hover); }
         .drag-handle { color: var(--text-muted); cursor: grab; }
         .task-title-text { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -83,6 +88,21 @@
         .task-row-node:hover .task-actions { opacity: 1; }
         .action-icon { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 0.85rem; padding: 2px 4px; }
         .action-icon:hover { color: var(--text-main); }
+
+        /* Inline Input Animatif di Sidebar */
+        .task-inline-input-row {
+            height: var(--row-height); display: flex; align-items: center; padding: 0 12px;
+            border-bottom: 1px solid var(--accent-blue); background: rgba(56, 189, 248, 0.05);
+            animation: slideDown 0.25s ease-out forwards;
+        }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .inline-task-input {
+            flex: 1; background: var(--bg-dark); border: 1px solid var(--accent-blue);
+            color: var(--text-main); padding: 6px 10px; border-radius: 4px; font-size: 0.85rem; outline: none;
+        }
 
         /* Timeline Canvas */
         .timeline-container { flex: 1; display: flex; flex-direction: column; overflow-x: auto; background-color: var(--bg-dark); position: relative; }
@@ -129,7 +149,7 @@
         </div>
         <div class="header-controls">
             <button class="view-switcher" onclick="toggleMobileView()" id="modeToggleBtn">📱 Mobile View</button>
-            <button class="btn-action btn-primary" onclick="addNewTask()">+ Add Task</button>
+            <button class="btn-action btn-primary" onclick="showInlineInput()">+ Add Task</button>
             <button class="view-switcher" onclick="handleLogout()" style="color: var(--accent-red);">Logout</button>
         </div>
     </header>
@@ -137,8 +157,13 @@
     <div class="app-container">
         <div class="desktop-view" id="desktopView">
             <div class="task-sidebar">
-                <div class="sidebar-header">Task Hierarchy (Level 0-4)</div>
-                <div class="sidebar-body" id="sidebarTaskRows"></div>
+                <div class="sidebar-header">
+                    <span>Task Hierarchy (Level 0-4)</span>
+                    <button class="action-icon" onclick="showInlineInput()" title="Tambah Task Baris Baru" style="font-size: 1rem; color: var(--accent-blue);">＋</button>
+                </div>
+                <div class="sidebar-body" id="sidebarTaskRows">
+                    <!-- Inline input akan muncul di sini secara animatif jika dipanggil -->
+                </div>
             </div>
             <div class="timeline-container">
                 <div class="timeline-header-scroll" id="timelineHeader"></div>
@@ -159,10 +184,9 @@
         let currentUser = null;
         let isMobileMode = false;
 
-        // Tunggu hingga modul ES selesai dimuat, lalu jalankan aplikasi
         window.addEventListener('DOMContentLoaded', async () => {
             const SUPABASE_URL = 'https://movcjscdntwckaslnumn.supabase.co';
-            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vdmNqc2NkbnR3Y2thc2xudW1uIiwicm9sZSI6ImFub24iOjE3ODUwNDU3ODUsImV4cCI6MjEwMDYyMTc4NX0.rGYGREApohqwSaArGr4DtZXeuUJ0OUE7QeOyNjpswv8';
+            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vdmNqc2NkbnR3Y2thc2xudW1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUwNDU3ODUsImV4cCI6MjEwMDYyMTc4NX0.rGYGREApohqwSaArGr4DtZXeuUJ0OUE7QeOyNjpswv8';
 
             if (window.createClient) {
                 supabaseClient = window.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -173,7 +197,7 @@
         });
 
         async function checkUserSession() {
-            const { data: { session }, error } = await supabaseClient.auth.getSession();
+            const { data: { session } } = await supabaseClient.auth.getSession();
             if (session) {
                 currentUser = session.user;
                 document.getElementById('authScreen').style.display = 'none';
@@ -185,11 +209,7 @@
         async function handleAuth() {
             const email = document.getElementById('authEmail').value.trim();
             const pass = document.getElementById('authPassword').value.trim();
-            
-            if(!email || !pass) {
-                alert('Mohon masukkan email dan password!');
-                return;
-            }
+            if(!email || !pass) return alert('Mohon masukkan email dan password!');
 
             const btn = document.getElementById('authSubmitBtn');
             btn.disabled = true;
@@ -198,7 +218,7 @@
                 if(isSignUpMode) {
                     const { data, error } = await supabaseClient.auth.signUp({ email, password: pass });
                     if(error) throw error;
-                    alert('Pendaftaran berhasil! Silakan login (pastikan konfirmasi email di Supabase sudah dimatikan).');
+                    alert('Pendaftaran berhasil! Silakan login.');
                     isSignUpMode = false;
                     toggleAuthMode();
                 } else {
@@ -256,6 +276,7 @@
         function renderSidebarTasks() {
             const container = document.getElementById('sidebarTaskRows');
             container.innerHTML = '';
+            
             tasksData.forEach(task => {
                 const row = document.createElement('div');
                 row.className = `task-row-node level-${task.level || 0}`;
@@ -268,6 +289,64 @@
                 `;
                 container.appendChild(row);
             });
+        }
+
+        // Fitur Animatif: Menampilkan baris input langsung di sidebar
+        function showInlineInput() {
+            // Cegah duplikasi input jika sudah terbuka
+            if (document.getElementById('inlineTaskInputRow')) return;
+
+            const container = document.getElementById('sidebarTaskRows');
+            const inputRow = document.createElement('div');
+            inputRow.className = 'task-inline-input-row';
+            inputRow.id = 'inlineTaskInputRow';
+            inputRow.innerHTML = `
+                <span style="color: var(--accent-blue);">⚡</span>
+                <input type="text" id="inlineTaskInput" class="inline-task-input" placeholder="Ketik nama task, lalu Enter..." autocomplete="off" />
+            `;
+            container.prepend(inputRow);
+
+            const inputElem = document.getElementById('inlineTaskInput');
+            inputElem.focus();
+
+            // Simpan saat tekan Enter, batalkan saat tekan Escape atau klik di luar
+            inputElem.addEventListener('keydown', async (e) => {
+                if (e.key === 'Enter') {
+                    const title = inputElem.value.trim();
+                    if (title) {
+                        await saveNewTaskInline(title);
+                    } else {
+                        inputRow.remove();
+                    }
+                } else if (e.key === 'Escape') {
+                    inputRow.remove();
+                }
+            });
+
+            inputElem.addEventListener('blur', () => {
+                setTimeout(() => {
+                    if (document.getElementById('inlineTaskInputRow')) {
+                        inputRow.remove();
+                    }
+                }, 200);
+            });
+        }
+
+        async function saveNewTaskInline(title) {
+            const { error } = await supabaseClient.from('tasks').insert([{
+                user_id: currentUser.id,
+                title: title,
+                start_date: '2026-04-01',
+                end_date: '2026-05-01',
+                level: 0,
+                sort_order: tasksData.length
+            }]);
+
+            if(error) {
+                alert('Gagal menyimpan: ' + error.message);
+            } else {
+                fetchTasks();
+            }
         }
 
         function renderTimelineBars() {
@@ -308,23 +387,6 @@
                 card.innerHTML = `<strong>${task.title}</strong><div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Level ${task.level || 0}</div>`;
                 container.appendChild(card);
             });
-        }
-
-        async function addNewTask() {
-            const title = prompt("Masukkan Judul Task Baru:");
-            if(!title) return;
-
-            const { error } = await supabaseClient.from('tasks').insert([{
-                user_id: currentUser.id,
-                title: title,
-                start_date: '2026-04-01',
-                end_date: '2026-05-01',
-                level: 0,
-                sort_order: tasksData.length
-            }]);
-
-            if(error) alert(error.message);
-            else fetchTasks();
         }
 
         async function deleteTask(id) {
