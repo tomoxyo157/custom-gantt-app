@@ -3,550 +3,507 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PWA Custom Gantt Chart - Pro Edition</title>
-    <script type="module">
-        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-        window.createClient = createClient;
-    </script>
+    <title>1 year / zen minimalist</title>
+
+    <!-- EB Garamond Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+
     <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'EB Garamond', serif !important;
+            text-transform: lowercase !important;
+            margin: 0;
+            padding: 0;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, opacity 0.3s ease, transform 0.3s ease;
+        }
+
         :root {
-            --bg-dark: #0f172a; --bg-panel: #1e293b; --bg-hover: #334155; --border-color: #334155;
-            --text-main: #f8fafc; --text-muted: #94a3b8; --accent-blue: #38bdf8; --accent-green: #22c55e;
-            --accent-red: #ef4444; --sidebar-width: 360px; --row-height: 44px;
+            --bg-color: #f4f1ea;
+            --card-bg: #fbfbf9;
+            --border-color: #e3ded4;
+            --text-color: #232220;
+            --muted-color: #8c867b;
+            --accent-color: #4a453e;
+            --line-color: rgba(227, 222, 212, 0.5);
+            --sidebar-width: 340px;
+            --row-height: 22px; /* Sangat rapat & muat banyak */
+            --shadow-md: 0 8px 24px rgba(0,0,0,0.06);
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
-        body { background-color: var(--bg-dark); color: var(--text-main); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        body.dark-mode {
+            --bg-color: #141413;
+            --card-bg: #1c1c1a;
+            --border-color: #2a2a27;
+            --text-color: #e3ded8;
+            --muted-color: #737068;
+            --accent-color: #b5b0a4;
+            --line-color: rgba(42, 42, 39, 0.6);
+            --shadow-md: 0 8px 24px rgba(0,0,0,0.5);
+        }
 
-        /* Auth Screen */
-        #authScreen { position: fixed; inset: 0; background: var(--bg-dark); z-index: 1000; display: flex; align-items: center; justify-content: center; }
-        .auth-card { background: var(--bg-panel); border: 1px solid var(--border-color); padding: 30px; border-radius: 12px; width: 350px; }
-        .auth-input { width: 100%; padding: 10px; margin-bottom: 12px; background: var(--bg-dark); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 6px; }
-        .auth-btn { width: 100%; padding: 10px; background: var(--accent-blue); color: #0f172a; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; }
-        .auth-toggle { text-align: center; margin-top: 12px; font-size: 0.85rem; color: var(--text-muted); cursor: pointer; }
+        /* Grainy Abstract Overlay */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.035'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 999;
+        }
 
-        /* Header */
-        header { height: 60px; background: var(--bg-panel); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; flex-shrink: 0; }
-        .view-switcher { background: var(--bg-dark); border: 1px solid var(--border-color); color: var(--text-main); padding: 6px 12px; border-radius: 6px; font-size: 0.85rem; cursor: pointer; }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            padding: 40px 60px;
+        }
 
-        /* Main Layout */
-        .app-container { display: flex; flex: 1; overflow: hidden; }
-        .task-sidebar { width: var(--sidebar-width); background: var(--bg-panel); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; flex-shrink: 0; z-index: 10; }
-        .sidebar-header { height: 54px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; font-weight: bold; font-size: 0.85rem; }
-        .sidebar-body { flex: 1; overflow-y: auto; position: relative; }
+        header {
+            background: var(--card-bg);
+            padding: 10px 20px;
+            border: 1px solid var(--border-color);
+            border-bottom: none;
+            border-radius: 12px 12px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
 
-        /* Task Rows */
-        .task-row-wrapper { position: relative; }
-        .task-row-node { height: var(--row-height); display: flex; align-items: center; padding: 0 12px; border-bottom: 1px solid var(--border-color); gap: 6px; font-size: 0.85rem; background: var(--bg-panel); transition: background 0.15s; }
-        .task-row-node:hover { background-color: var(--bg-hover); }
-        .task-row-node.drag-over { border-top: 2px dashed var(--accent-blue); }
-        .task-row-node.dragging { opacity: 0.4; }
-        .drag-handle { color: var(--text-muted); cursor: grab; font-size: 1rem; }
+        h1 { font-size: 0.9rem; font-weight: 500; color: var(--text-color); letter-spacing: 0.5px; }
+
+        .theme-switch {
+            position: relative;
+            width: 28px;
+            height: 14px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            padding: 1px;
+        }
+
+        .theme-switch-handle {
+            width: 10px;
+            height: 10px;
+            background: var(--text-color);
+            border-radius: 50%;
+            transform: translateX(0);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        body.dark-mode .theme-switch-handle {
+            transform: translateX(14px);
+        }
+
+        .gantt-wrapper {
+            display: flex;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            flex: 1;
+            border-radius: 0 0 12px 12px;
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+        }
+
+        .gantt-container { display: flex; flex: 1; overflow: hidden; user-select: none; }
+
+        /* Sidebar Panel */
+        .gantt-sidebar { width: var(--sidebar-width); background: var(--card-bg); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; z-index: 10; position: relative; }
+        .sidebar-header { height: 45px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; padding: 0 16px; }
+        .sidebar-body { flex: 1; overflow-y: auto; position: relative; padding: 4px 0; scrollbar-width: none; }
+        .sidebar-body::-webkit-scrollbar { display: none; }
+
+        .task-row-container { position: relative; }
+        
+        .insert-trigger { height: 4px; position: absolute; left: 0; right: 0; z-index: 5; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .insert-trigger.top { top: -2px; }
+        .insert-trigger.bottom { bottom: -2px; }
+        .insert-line { width: 100%; height: 1px; background: var(--accent-color); opacity: 0; transition: opacity 0.2s; position: relative; }
+        .insert-trigger:hover .insert-line { opacity: 0.4; }
+        .plus-btn { position: absolute; background: var(--text-color); color: var(--bg-color); border: none; width: 12px; height: 12px; border-radius: 50%; font-size: 0.55rem; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: opacity 0.2s; top: -6px; left: 50%; transform: translateX(-50%); }
+        .insert-trigger:hover .plus-btn { opacity: 1; }
+
+        .task-row { height: var(--row-height); display: flex; align-items: center; border-bottom: 1px solid var(--border-color); padding-right: 8px; background: var(--card-bg); transition: background 0.15s; }
+        .task-row.drag-over { background: var(--border-color); border-bottom: 1px dashed var(--accent-color); }
+
+        /* 6 dots digeser agak ke kanan agar ada jarak dari tepian window/page */
+        .task-content-inner { display: flex; align-items: center; width: 100%; gap: 5px; position: relative; z-index: 2; padding-left: 10px; }
+        
+        .drag-handle { cursor: grab; color: var(--muted-color); font-size: 0.75rem; padding: 0 2px; opacity: 0.4; }
+        .drag-handle:hover { opacity: 1; }
         .drag-handle:active { cursor: grabbing; }
-        .task-title-text { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
-        .task-title-text:hover { color: var(--accent-blue); }
-        
-        .inline-edit-input { flex: 1; background: var(--bg-dark); border: 1px solid var(--accent-blue); color: #fff; padding: 2px 6px; font-size: 0.85rem; border-radius: 4px; outline: none; }
-        
-        .task-actions { display: flex; opacity: 0; }
-        .task-row-node:hover .task-actions { opacity: 1; }
-        .action-icon { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 0.8rem; padding: 2px 4px; }
 
-        /* Insert Line Hover */
-        .insert-hover-line { position: absolute; bottom: -8px; left: 0; right: 0; height: 16px; z-index: 20; display: flex; align-items: center; justify-content: center; opacity: 0; cursor: pointer; }
-        .task-row-wrapper:hover .insert-hover-line { opacity: 1; }
-        .insert-hover-line::before { content: ""; position: absolute; left: 0; right: 0; height: 2px; background: var(--accent-green); }
-        .insert-btn-circle { background: var(--accent-green); color: #000; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.85rem; z-index: 21; }
-
-        /* Timeline Area */
-        .timeline-container { flex: 1; display: flex; flex-direction: column; overflow-x: auto; background: var(--bg-dark); position: relative; }
+        .task-name-text { flex: 1; font-size: 0.7rem; color: var(--text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 1px 3px; border-radius: 3px; outline: none; }
+        .task-name-text:focus { background: var(--bg-color); border: 1px solid var(--border-color); }
         
-        /* Merged Hierarchical Header */
-        .timeline-header-scroll { display: flex; flex-direction: column; background: var(--bg-panel); position: sticky; top: 0; z-index: 5; border-bottom: 1px solid var(--border-color); }
-        .header-tier { display: flex; border-bottom: 1px solid var(--border-color); }
-        .header-tier:last-child { border-bottom: none; }
-        .header-cell { display: flex; align-items: center; justify-content: center; border-right: 1px solid var(--border-color); font-size: 0.75rem; color: var(--text-muted); flex-shrink: 0; text-align: center; }
-        .header-cell-top { font-weight: bold; color: var(--text-main); }
+        .task-actions { display: flex; gap: 3px; opacity: 0; transition: opacity 0.2s; }
+        .task-row:hover .task-actions { opacity: 1; }
+        .action-btn { background: none; border: none; padding: 1px 3px; border-radius: 3px; font-size: 0.55rem; cursor: pointer; color: var(--muted-color); }
+        .action-btn:hover { background: var(--border-color); color: var(--text-color); }
+        .action-btn.del:hover { color: #ff3b30; }
+
+        /* Timeline Panel */
+        .gantt-timeline { flex: 1; overflow-x: auto; overflow-y: auto; background: var(--card-bg); position: relative; scrollbar-width: none; }
+        .gantt-timeline::-webkit-scrollbar { display: none; }
         
-        .timeline-body { flex: 1; position: relative; }
-        .timeline-row { height: var(--row-height); border-bottom: 1px solid var(--border-color); position: relative; display: flex; align-items: center; }
-        .grid-bg-lines { position: absolute; inset: 0; display: flex; pointer-events: none; z-index: 1; }
-        .grid-col-line { border-right: 1px dashed rgba(255,255,255,0.05); flex-shrink: 0; }
+        .timeline-grid-header { display: flex; flex-direction: column; }
+        
+        .years-row { display: flex; height: 18px; border-bottom: 1px solid var(--border-color); background: var(--bg-color); }
+        .year-cell { display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 600; color: var(--text-color); border-right: 1px solid var(--border-color); }
 
-        /* Interactive Gantt Bar */
-        .gantt-bar {
-            position: absolute; height: 26px; background: linear-gradient(90deg, #0284c7, #38bdf8);
-            border-radius: 6px; top: 9px; z-index: 2; display: flex; align-items: center; justify-content: space-between;
-            padding: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.2); cursor: grab; user-select: none;
-        }
-        .gantt-bar:active { cursor: grabbing; }
-        .gantt-bar-handle { width: 8px; height: 100%; background: rgba(255,255,255,0.2); cursor: ew-resize; z-index: 3; }
-        .gantt-bar-handle:hover { background: rgba(255,255,255,0.6); }
-        .gantt-bar-title { font-size: 0.7rem; color: #fff; font-weight: bold; overflow: hidden; white-space: nowrap; padding: 0 6px; flex: 1; pointer-events: none; }
+        .months-row, .weeks-row { display: flex; height: 16px; border-bottom: 1px solid var(--border-color); }
+        .month-cell { border-right: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; font-size: 0.6rem; color: var(--muted-color); }
+        .week-cell { width: 22px; min-width: 22px; border-right: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; font-size: 0.5rem; color: var(--muted-color); opacity: 0.6; }
 
-        /* Modal Deskripsi */
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 2000; display: none; align-items: center; justify-content: center; }
-        .modal-card { background: var(--bg-panel); border: 1px solid var(--border-color); width: 500px; padding: 24px; border-radius: 8px; }
-        .modal-field { margin-bottom: 16px; }
-        .modal-field label { display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 6px; }
-        .modal-field textarea { width: 100%; background: var(--bg-dark); border: 1px solid var(--border-color); color: #fff; padding: 10px; border-radius: 6px; font-size: 0.9rem; resize: vertical; }
+        .timeline-rows-container { position: relative; }
+        .timeline-row-lane { height: var(--row-height); border-bottom: 1px solid var(--border-color); position: relative; display: flex; align-items: center; }
+
+        .grid-bg-line { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line-color); pointer-events: none; }
+
+        /* Timeline Bar & Handles */
+        .task-bar { position: absolute; height: 12px; background: var(--text-color); border-radius: 2px; display: flex; align-items: center; color: var(--bg-color); font-size: 0.5rem; }
+        .task-bar.parent { background: var(--muted-color); font-weight: 600; }
+        
+        .bar-content { flex: 1; padding: 0 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: move; }
+        .task-bar.parent .bar-content { cursor: default; }
+
+        .resizer { width: 5px; height: 100%; position: absolute; top: 0; cursor: col-resize; z-index: 2; opacity: 0; transition: opacity 0.2s; }
+        .task-bar:hover .resizer { opacity: 1; background: rgba(255,255,255,0.25); }
+        .resizer.left { left: 0; border-radius: 2px 0 0 2px; }
+        .resizer.right { right: 0; border-radius: 0 2px 2px 0; }
+        
+        .current-week-line { position: absolute; top: 0; bottom: 0; width: 1px; background: #ff3b30; z-index: 5; pointer-events: none; }
+
+        /* Zen Animated Modal */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.35); backdrop-filter: blur(2px); display: none; align-items: center; justify-content: center; z-index: 10000; opacity: 0; transition: opacity 0.25s ease; }
+        .modal-overlay.active { display: flex; opacity: 1; }
+        .modal-card { background: var(--card-bg); padding: 16px; border-radius: 10px; width: 300px; border: 1px solid var(--border-color); box-shadow: var(--shadow-md); transform: scale(0.95); transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .modal-overlay.active .modal-card { transform: scale(1); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; }
+        .modal-title { font-size: 0.75rem; font-weight: 600; color: var(--text-color); }
+        .btn-close { background: none; border: none; font-size: 0.9rem; color: var(--muted-color); cursor: pointer; }
+        .modal textarea { width: 100%; height: 70px; padding: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); border-radius: 5px; resize: none; margin-bottom: 10px; outline: none; font-size: 0.7rem; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 5px; }
+        .btn { background: var(--text-color); color: var(--bg-color); border: none; padding: 3px 8px; border-radius: 5px; cursor: pointer; font-size: 0.65rem; }
+        .btn-secondary { background: transparent; color: var(--muted-color); border: 1px solid var(--border-color); }
+        .btn-secondary:hover { color: var(--text-color); background: var(--border-color); }
     </style>
 </head>
-<body>
-
-    <div id="authScreen">
-        <div class="auth-card">
-            <h2 id="authTitle">Login Pro Gantt</h2>
-            <input type="email" id="authEmail" class="auth-input" placeholder="Email" />
-            <input type="password" id="authPassword" class="auth-input" placeholder="Password" />
-            <button class="auth-btn" id="authSubmitBtn" onclick="handleAuth()">Masuk</button>
-            <div class="auth-toggle" onclick="toggleAuthMode()" id="authToggleText">Belum punya akun? Daftar</div>
-        </div>
-    </div>
-
-    <div class="modal-overlay" id="taskModal">
-        <div class="modal-card">
-            <h3>Deskripsi & Catatan Task</h3>
-            <div class="modal-field" style="margin-top:15px;">
-                <label>Detail Deskripsi</label>
-                <textarea id="modalInputDesc" rows="8"></textarea>
-            </div>
-            <div style="display: flex; justify-content: flex-end; gap: 10px;">
-                <button class="view-switcher" onclick="closeModal()">Batal</button>
-                <button class="view-switcher" style="background: var(--accent-blue); color: #000;" onclick="saveDescription()">Simpan Deskripsi</button>
-            </div>
-        </div>
-    </div>
+<body class="dark-mode">
 
     <header>
-        <div style="display: flex; align-items: center; gap:10px;">
-            <h1 style="font-size: 1.1rem;">PWA Custom Gantt</h1>
-            <span id="userEmailBadge" style="font-size:0.75rem; color:var(--accent-green);"></span>
-        </div>
-        <div style="display: flex; gap: 10px;">
-            <select class="view-switcher" id="timeScaleSelect" onchange="changeTimeScale(this.value)">
-                <option value="yearly">Yearly (Bulan & Minggu)</option>
-                <option value="5years">5 Years (Tahun & Kuartal)</option>
-                <option value="lifetime">Lifetime (Multi-Tahun)</option>
-            </select>
-            <button class="view-switcher" onclick="handleLogout()" style="color: var(--accent-red);">Logout</button>
+        <h1>1 year</h1>
+        <div class="theme-switch" onclick="toggleTheme()" title="toggle theme">
+            <div class="theme-switch-handle" id="switchHandle"></div>
         </div>
     </header>
 
-    <div class="app-container">
-        <div class="task-sidebar">
-            <div class="sidebar-header">
-                <span>Daftar Task</span>
-                <button class="action-icon" onclick="addNewTaskInline('Task Baru')" style="color:var(--accent-green); font-size:1.2rem;">＋</button>
+    <div class="gantt-wrapper">
+        <div class="gantt-container">
+            <!-- Sidebar Kiri Tanpa Garis Vertikal -->
+            <div class="gantt-sidebar" id="sidebarContainer">
+                <div class="sidebar-header"></div>
+                <div class="sidebar-body" id="sidebarBody"></div>
             </div>
-            <div class="sidebar-body" id="sidebarTaskRows"></div>
+
+            <!-- Timeline Kanan -->
+            <div class="gantt-timeline" id="timelineContainer">
+                <div class="timeline-grid-header" id="timelineGridHeader">
+                    <div class="years-row" id="yearsRow"></div>
+                    <div class="months-row" id="monthsRow"></div>
+                    <div class="weeks-row" id="weeksRow"></div>
+                </div>
+                <div class="timeline-rows-container" id="timelineRowsContainer"></div>
+            </div>
         </div>
-        <div class="timeline-container" id="timelineContainer">
-            <div class="timeline-header-scroll" id="timelineHeader"></div>
-            <div class="timeline-body" id="timelineBodyRows"></div>
+    </div>
+
+    <!-- Modal Zen Notes -->
+    <div class="modal-overlay" id="notesModal" onclick="closeModalOnOverlay(event)">
+        <div class="modal-card">
+            <div class="modal-header">
+                <span class="modal-title" id="modalTitle">catatan</span>
+                <button class="btn-close" onclick="closeModal()">×</button>
+            </div>
+            <textarea id="modalTextarea" placeholder="tulis catatan..."></textarea>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal()">batal</button>
+                <button class="btn" onclick="saveNotes()">simpan</button>
+            </div>
         </div>
     </div>
 
     <script>
-        const SUPABASE_URL = 'https://movcjscdntwckaslnumn.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vdmNqc2NkbnR3Y2thc2xudW1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUwNDU3ODUsImV4cCI6MjEwMDYyMTc4NX0.rGYGREApohqwSaArGr4DtZXeuUJ0OUE7QeOyNjpswv8';
-        
-        let supabase = null;
-        let tasksData = [];
-        let currentUser = null;
-        let isSignUpMode = false;
-        
-        let currentScale = 'yearly';
-        const timelineEpoch = new Date('2026-01-01T00:00:00');
+        let timelineConfig = {
+            startYear: 2026,
+            yearsCount: 1
+        };
 
-        let activeModalTaskId = null;
-        let colWidthConfig = 40;
-        let daysPerColConfig = 7;
+        let tasks = [
+            { id: 1, name: "perencanaan strategis", level: 0, startWeek: 1, endWeek: 4, notes: "kick-off awal tahun." },
+            { id: 2, name: "riset pasar & target", level: 1, startWeek: 1, endWeek: 2, notes: "" },
+            { id: 3, name: "pengembangan inti sistem", level: 0, startWeek: 5, endWeek: 20, notes: "" }
+        ];
 
-        // Variables untuk Interactive Gantt Dragging & Resizing
-        let isDraggingGantt = false;
-        let ganttDragMode = null; // 'move', 'resize-left', 'resize-right'
-        let activeGanttTask = null;
-        let startMouseX = 0;
-        let startLeftPx = 0;
-        let startWidthPx = 0;
+        const weekWidth = 22; 
+        let draggedTaskIndex = null;
+        let currentEditingIndex = null;
+        let activeBar = null, actionType = null, startMouseX = 0, initialStartWeek = 0, initialEndWeek = 0;
 
-        window.addEventListener('DOMContentLoaded', () => {
-            if (window.createClient) {
-                supabase = window.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                checkSession();
-                setupGlobalGanttListeners();
-            }
-        });
-
-        async function checkSession() {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-                currentUser = session.user;
-                document.getElementById('authScreen').style.display = 'none';
-                document.getElementById('userEmailBadge').innerText = currentUser.email;
-                fetchTasks();
-            }
+        function getWeeksInYear(year) {
+            const d = new Date(year, 11, 31);
+            return (d.getDay() === 4 || (d.getDay() === 3 && ((year % 4 === 0 && year % 100 !== 0) || year % 400 === 0))) ? 53 : 52;
         }
 
-        async function handleAuth() {
-            const email = document.getElementById('authEmail').value;
-            const password = document.getElementById('authPassword').value;
-            if(!email || !password) return;
-
-            if(isSignUpMode) {
-                const { error } = await supabase.auth.signUp({ email, password });
-                if(error) alert(error.message); 
-                else { alert('Sukses daftar! Silakan login.'); toggleAuthMode(); }
-            } else {
-                const { error } = await supabase.auth.signInWithPassword({ email, password });
-                if(error) alert(error.message); 
-                else location.reload();
-            }
+        function initGantt() {
+            renderHeader();
+            renderContent();
+            document.getElementById('timelineContainer').scrollLeft = (32 - 4) * weekWidth;
         }
 
-        function toggleAuthMode() {
-            isSignUpMode = !isSignUpMode;
-            document.getElementById('authTitle').innerText = isSignUpMode ? 'Daftar Akun Baru' : 'Login Pro Gantt';
-            document.getElementById('authSubmitBtn').innerText = isSignUpMode ? 'Daftar' : 'Masuk';
-            document.getElementById('authToggleText').innerText = isSignUpMode ? 'Sudah punya akun? Login' : 'Belum punya akun? Daftar';
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
         }
 
-        async function handleLogout() { await supabase.auth.signOut(); location.reload(); }
+        function renderHeader() {
+            let totalWeeks = 0;
+            let yearsHTML = '';
+            let monthHTML = '';
+            let weekHTML = '';
 
-        async function fetchTasks() {
-            const { data, error } = await supabase.from('tasks').select('*').order('sort_order', { ascending: true });
-            if(!error) {
-                tasksData = data || [];
-                renderAll();
-            }
-        }
+            for (let y = 0; y < timelineConfig.yearsCount; y++) {
+                const yr = timelineConfig.startYear + y;
+                const wCount = getWeeksInYear(yr);
+                totalWeeks += wCount;
+                yearsHTML += `<div class="year-cell" style="width: ${wCount * weekWidth}px;">${yr}</div>`;
 
-        function renderAll() {
-            updateScaleConfig();
-            renderTimelineHeader();
-            renderSidebar();
-            renderTimelineRows();
-        }
+                const monthsData = [
+                    {n:"jan",w:4}, {n:"feb",w:4}, {n:"mar",w:wCount === 53 ? 5 : 4}, 
+                    {n:"apr",w:4}, {n:"mei",w:4}, {n:"jun",w:5}, 
+                    {n:"jul",w:4}, {n:"ags",w:4}, {n:"sep",w:5}, 
+                    {n:"okt",w:4}, {n:"nov",w:4}, {n:"des",w:wCount === 53 ? 5 : 4}
+                ];
 
-        function changeTimeScale(scale) { currentScale = scale; renderAll(); }
-
-        function updateScaleConfig() {
-            if (currentScale === 'yearly') { colWidthConfig = 40; daysPerColConfig = 7; }
-            else if (currentScale === '5years') { colWidthConfig = 80; daysPerColConfig = 91.25; }
-            else { colWidthConfig = 40; daysPerColConfig = 365; }
-        }
-
-        function renderTimelineHeader() {
-            const header = document.getElementById('timelineHeader');
-            header.innerHTML = '';
-
-            let tier1 = document.createElement('div'); tier1.className = 'header-tier';
-            let tier2 = document.createElement('div'); tier2.className = 'header-tier';
-            let tier3 = document.createElement('div'); tier3.className = 'header-tier';
-
-            if (currentScale === 'yearly') {
-                header.style.width = `${52 * 40}px`;
-                tier1.innerHTML = `<div class="header-cell header-cell-top" style="width: 100%; height: 24px;">2026</div>`;
-                const monthWeeks = [4,4,5,4,4,5,4,4,5,4,4,5];
-                const months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
-                monthWeeks.forEach((weeks, i) => {
-                    tier2.innerHTML += `<div class="header-cell" style="width: ${weeks * 40}px; height: 20px; background: rgba(0,0,0,0.1);">${months[i]}</div>`;
+                monthsData.forEach(m => {
+                    monthHTML += `<div class="month-cell" style="width: ${m.w * weekWidth}px;">${m.n}</div>`;
                 });
-                for(let i=1; i<=52; i++) {
-                    tier3.innerHTML += `<div class="header-cell" style="width: 40px; height: 20px;">W${i}</div>`;
-                }
-                header.append(tier1, tier2, tier3);
-            } else if (currentScale === '5years') {
-                header.style.width = `${20 * 80}px`;
-                tier1.innerHTML = `<div class="header-cell header-cell-top" style="width: 100%; height: 24px;">Rencana Jangka Menengah (2026 - 2030)</div>`;
-                for(let y=2026; y<=2030; y++) {
-                    tier2.innerHTML += `<div class="header-cell" style="width: 320px; height: 20px; background: rgba(0,0,0,0.1);">${y}</div>`;
-                    for(let q=1; q<=4; q++) {
-                        tier3.innerHTML += `<div class="header-cell" style="width: 80px; height: 20px;">Q${q}</div>`;
-                    }
-                }
-                header.append(tier1, tier2, tier3);
-            } else {
-                header.style.width = `${50 * 40}px`;
-                tier1.innerHTML = `<div class="header-cell header-cell-top" style="width: 100%; height: 24px;">Lifetime (2026 - 2075)</div>`;
-                for(let d=0; d<5; d++) {
-                    tier2.innerHTML += `<div class="header-cell" style="width: 400px; height: 20px; background: rgba(0,0,0,0.1);">Dekade ${2020 + (d*10)}s</div>`;
-                    for(let y=1; y<=10; y++) {
-                        tier3.innerHTML += `<div class="header-cell" style="width: 40px; height: 20px;">'${(2026 + (d*10) + y - 1).toString().slice(2)}</div>`;
-                    }
-                }
-                header.append(tier1, tier2, tier3);
             }
+
+            for (let i = 1; i <= totalWeeks; i++) {
+                weekHTML += `<div class="week-cell">${i}</div>`;
+            }
+
+            const totalWidth = totalWeeks * weekWidth;
+            document.getElementById('timelineGridHeader').style.width = totalWidth + 'px';
+            document.getElementById('timelineRowsContainer').style.width = totalWidth + 'px';
+
+            document.getElementById('yearsRow').innerHTML = yearsHTML;
+            document.getElementById('monthsRow').innerHTML = monthHTML;
+            document.getElementById('weeksRow').innerHTML = weekHTML;
         }
 
-        function renderSidebar() {
-            const container = document.getElementById('sidebarTaskRows');
-            container.innerHTML = '';
+        function renderContent() {
+            updateParentTimelines();
+            const sidebar = document.getElementById('sidebarBody');
+            const timeline = document.getElementById('timelineRowsContainer');
+            
+            let sidebarHTML = '';
+            let timelineHTML = '';
 
-            tasksData.forEach((task, index) => {
-                const wrapper = document.createElement('div');
-                wrapper.className = 'task-row-wrapper';
+            tasks.forEach((task, index) => {
+                const indent = Math.min(task.level, 6) * 14;
+                const isPar = isParent(index);
 
-                const row = document.createElement('div');
-                row.className = 'task-row-node';
-                row.draggable = true;
-                row.dataset.id = task.id;
-
-                let indentPx = (task.level || 0) * 16;
-
-                row.innerHTML = `
-                    <span class="drag-handle" title="Tarik untuk ubah urutan">⠿</span>
-                    <span class="task-title-text" style="padding-left: ${indentPx}px;" ondblclick="enableInlineEdit('${task.id}')" id="title-txt-${task.id}">${task.title}</span>
-                    <div class="task-actions">
-                        <button class="action-icon" title="Deskripsi" onclick="openDescModal('${task.id}')">📝</button>
-                        <button class="action-icon" title="Hapus" onclick="deleteTask('${task.id}')">🗑️</button>
+                sidebarHTML += `
+                    <div class="task-row-container">
+                        <div class="insert-trigger top" onclick="insertTaskAt(${index})">
+                            <div class="insert-line"><button class="plus-btn">+</button></div>
+                        </div>
+                        <div class="task-row" draggable="true" ondragstart="dragStart(event, ${index})" ondragover="dragOver(event)" ondrop="drop(event, ${index})" ondragleave="dragLeave(event)">
+                            <div class="task-content-inner" style="padding-left: ${10 + indent}px;">
+                                <span class="drag-handle" title="geser hierarki / posisi">⠿</span>
+                                <span class="task-name-text" contenteditable="true" onblur="updateTaskNameInline(${index}, this.innerText)">${task.name}</span>
+                                <div class="task-actions">
+                                    <button class="action-btn" onclick="openNotes(${index})" title="catatan">catatan</button>
+                                    <button class="action-btn del" onclick="deleteTask(${index})" title="hapus">hapus</button>
+                                </div>
+                            </div>
+                        </div>
+                        ${index === tasks.length - 1 ? `
+                        <div class="insert-trigger bottom" onclick="insertTaskAt(${index + 1})">
+                            <div class="insert-line"><button class="plus-btn">+</button></div>
+                        </div>` : ''}
                     </div>
                 `;
 
-                // Drag & Drop Sidebar Handler
-                row.addEventListener('dragstart', e => { 
-                    e.dataTransfer.setData('text/plain', task.id); 
-                    row.classList.add('dragging'); 
-                });
-                row.addEventListener('dragend', () => row.classList.remove('dragging'));
-                row.addEventListener('dragover', e => { 
-                    e.preventDefault(); 
-                    row.classList.add('drag-over'); 
-                });
-                row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
-                row.addEventListener('drop', handleDropSidebar);
+                const leftPos = (task.startWeek - 1) * weekWidth;
+                const widthBar = Math.max(1, (task.endWeek - task.startWeek + 1)) * weekWidth;
+                let handles = !isPar ? `<div class="resizer left" onmousedown="initAction(event, ${index}, 'resize-left')"></div><div class="resizer right" onmousedown="initAction(event, ${index}, 'resize-right')"></div>` : '';
+                let moveEvent = !isPar ? `onmousedown="initAction(event, ${index}, 'move')"` : '';
 
-                const insertLine = document.createElement('div');
-                insertLine.className = 'insert-hover-line';
-                insertLine.innerHTML = `<div class="insert-btn-circle">+</div>`;
-                insertLine.onclick = () => addNewTaskInline('Sub Task Baru', task.id, (task.level || 0) + 1);
-
-                wrapper.appendChild(row);
-                wrapper.appendChild(insertLine);
-                container.appendChild(wrapper);
-            });
-        }
-
-        async function addNewTaskInline(title, parentId = null, level = 0) {
-            const today = new Date().toISOString().split('T')[0];
-            const nextWeek = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0];
-
-            const newTask = {
-                user_id: currentUser.id,
-                title: title,
-                description: '',
-                parent_id: parentId,
-                level: level,
-                sort_order: tasksData.length,
-                is_expanded: true,
-                start_date: today,
-                end_date: nextWeek,
-                progress: 0
-            };
-
-            const { error } = await supabase.from('tasks').insert([newTask]);
-            if (!error) fetchTasks();
-            else alert(error.message);
-        }
-
-        function enableInlineEdit(id) {
-            const titleSpan = document.getElementById(`title-txt-${id}`);
-            if(!titleSpan) return;
-            const currentTitle = titleSpan.innerText;
-            titleSpan.outerHTML = `<input type="text" class="inline-edit-input" id="edit-inp-${id}" value="${currentTitle}" onblur="saveInlineEdit('${id}')" onkeydown="if(event.key==='Enter') this.blur();">`;
-            document.getElementById(`edit-inp-${id}`).focus();
-        }
-
-        async function saveInlineEdit(id) {
-            const inp = document.getElementById(`edit-inp-${id}`);
-            if(!inp) return;
-            const newTitle = inp.value.trim();
-            const task = tasksData.find(t => t.id === id);
-            if (newTitle && newTitle !== task.title) {
-                task.title = newTitle;
-                await supabase.from('tasks').update({ title: newTitle }).eq('id', id);
-            }
-            renderSidebar();
-        }
-
-        async function deleteTask(id) {
-            if(confirm('Hapus task ini?')) {
-                await supabase.from('tasks').delete().eq('id', id);
-                fetchTasks();
-            }
-        }
-
-        async function handleDropSidebar(e) {
-            e.preventDefault();
-            const draggedId = e.dataTransfer.getData('text/plain');
-            const targetRow = e.currentTarget;
-            targetRow.classList.remove('drag-over');
-            const targetId = targetRow.dataset.id;
-            if(!draggedId || draggedId === targetId) return;
-
-            const draggedIdx = tasksData.findIndex(t => t.id === draggedId);
-            const targetIdx = tasksData.findIndex(t => t.id === targetId);
-            if(draggedIdx < 0 || targetIdx < 0) return;
-            
-            const [movedItem] = tasksData.splice(draggedIdx, 1);
-            tasksData.splice(targetIdx, 0, movedItem);
-
-            for (let i = 0; i < tasksData.length; i++) {
-                tasksData[i].sort_order = i;
-                await supabase.from('tasks').update({ sort_order: i }).eq('id', tasksData[i].id);
-            }
-            renderAll();
-        }
-
-        function renderTimelineRows() {
-            const container = document.getElementById('timelineBodyRows');
-            container.innerHTML = '';
-
-            tasksData.forEach(task => {
-                const row = document.createElement('div');
-                row.className = 'timeline-row';
-
-                const bgLines = document.createElement('div');
-                bgLines.className = 'grid-bg-lines';
-                let totalCols = currentScale === 'yearly' ? 52 : (currentScale === '5years' ? 20 : 50);
-                for(let i=0; i<totalCols; i++) {
-                    const col = document.createElement('div');
-                    col.className = 'grid-col-line';
-                    col.style.width = `${colWidthConfig}px`;
-                    bgLines.appendChild(col);
+                let totalWeeks = getWeeksInYear(timelineConfig.startYear);
+                let gridLines = '';
+                for(let w = 1; w <= totalWeeks; w++) {
+                    gridLines += `<div class="grid-bg-line" style="left: ${(w - 1) * weekWidth}px;"></div>`;
                 }
-                row.appendChild(bgLines);
 
-                const bar = document.createElement('div');
-                bar.className = 'gantt-bar';
-                bar.dataset.id = task.id;
-                
-                const startDays = (new Date(task.start_date) - timelineEpoch) / (1000 * 60 * 60 * 24);
-                const endDays = (new Date(task.end_date) - timelineEpoch) / (1000 * 60 * 60 * 24);
-                
-                let leftPx = (startDays / daysPerColConfig) * colWidthConfig;
-                let widthPx = Math.max(((endDays - startDays + 1) / daysPerColConfig) * colWidthConfig, 20);
-
-                bar.style.left = `${leftPx}px`;
-                bar.style.width = `${widthPx}px`;
-                bar.innerHTML = `
-                    <div class="gantt-bar-handle" data-handle="left"></div>
-                    <span class="gantt-bar-title">${task.title}</span>
-                    <div class="gantt-bar-handle" data-handle="right"></div>
+                timelineHTML += `
+                    <div class="timeline-row-lane">
+                        ${gridLines}
+                        <div class="task-bar ${isPar ? 'parent' : ''}" style="left: ${leftPos}px; width: ${widthBar}px;">
+                            ${handles}
+                            <div class="bar-content" ${moveEvent}>${task.name}</div>
+                        </div>
+                    </div>
                 `;
-
-                row.appendChild(bar);
-                container.appendChild(row);
             });
+
+            timelineHTML += `<div class="current-week-line" style="left: ${(31 - 1) * weekWidth}px;"></div>`;
+            
+            sidebar.innerHTML = sidebarHTML;
+            timeline.innerHTML = timelineHTML;
         }
 
-        /* ==============================================================
-           INTERACTIVE GANTT BAR MOUSEDRAG / RESIZE LOGIC
-           ============================================================== */
-        function setupGlobalGanttListeners() {
-            const timelineContainer = document.getElementById('timelineContainer');
-
-            timelineContainer.addEventListener('mousedown', e => {
-                const bar = e.target.closest('.gantt-bar');
-                if (!bar) return;
-
-                const taskId = bar.dataset.id;
-                activeGanttTask = tasksData.find(t => t.id === taskId);
-                if (!activeGanttTask) return;
-
-                isDraggingGantt = true;
-                startMouseX = e.clientX;
-                startLeftPx = parseFloat(bar.style.left) || 0;
-                startWidthPx = parseFloat(bar.style.width) || 40;
-
-                if (e.target.classList.contains('gantt-bar-handle')) {
-                    ganttDragMode = e.target.dataset.handle === 'left' ? 'resize-left' : 'resize-right';
-                } else {
-                    ganttDragMode = 'move';
-                }
-
-                e.stopPropagation();
-            });
-
-            window.addEventListener('mousemove', e => {
-                if (!isDraggingGantt || !activeGanttTask) return;
-                const dx = e.clientX - startMouseX;
-                const bar = document.querySelector(`.gantt-bar[data-id="${activeGanttTask.id}"]`);
-                if (!bar) return;
-
-                if (ganttDragMode === 'move') {
-                    let newLeft = Math.max(0, startLeftPx + dx);
-                    bar.style.left = `${newLeft}px`;
-                } else if (ganttDragMode === 'resize-left') {
-                    let newLeft = Math.max(0, startLeftPx + dx);
-                    let newWidth = startWidthPx - dx;
-                    if (newWidth > 20) {
-                        bar.style.left = `${newLeft}px`;
-                        bar.style.width = `${newWidth}px`;
-                    }
-                } else if (ganttDragMode === 'resize-right') {
-                    let newWidth = Math.max(20, startWidthPx + dx);
-                    bar.style.width = `${newWidth}px`;
-                }
-            });
-
-            window.addEventListener('mouseup', async () => {
-                if (!isDraggingGantt || !activeGanttTask) return;
-                isDraggingGantt = false;
-
-                const bar = document.querySelector(`.gantt-bar[data-id="${activeGanttTask.id}"]`);
-                if (bar) {
-                    const finalLeft = parseFloat(bar.style.left) || 0;
-                    const finalWidth = parseFloat(bar.style.width) || 40;
-
-                    // Hitung konversi pixel ke tanggal baru
-                    const daysPerPx = daysPerColConfig / colWidthConfig;
-                    const startDayOffset = Math.round(finalLeft * daysPerPx);
-                    const durationDays = Math.max(1, Math.round(finalWidth * daysPerPx));
-
-                    const newStartDate = new Date(timelineEpoch.getTime() + startDayOffset * 86400000);
-                    const newEndDate = new Date(newStartDate.getTime() + (durationDays - 1) * 86400000);
-
-                    const fmtStart = newStartDate.toISOString().split('T')[0];
-                    const fmtEnd = newEndDate.toISOString().split('T')[0];
-
-                    activeGanttTask.start_date = fmtStart;
-                    activeGanttTask.end_date = fmtEnd;
-
-                    // Simpan perubahan ke Database Supabase
-                    await supabase.from('tasks').update({
-                        start_date: fmtStart,
-                        end_date: fmtEnd
-                    }).eq('id', activeGanttTask.id);
-                }
-
-                activeGanttTask = null;
-                ganttDragMode = null;
-                renderTimelineRows();
-            });
+        function insertTaskAt(index) {
+            const newId = tasks.length > 0 ? Math.max(...tasks.map(t => t.id)) + 1 : 1;
+            tasks.splice(index, 0, { id: newId, name: "tugas baru", level: 0, startWeek: 1, endWeek: 4, notes: "" });
+            renderContent();
         }
 
-        function openDescModal(id) {
-            activeModalTaskId = id;
-            const task = tasksData.find(t => t.id === id);
-            document.getElementById('modalInputDesc').value = task.description || '';
-            document.getElementById('taskModal').style.display = 'flex';
+        function updateTaskNameInline(index, newName) {
+            if (newName.trim() !== "") {
+                tasks[index].name = newName.trim();
+                const bars = document.querySelectorAll('.bar-content');
+                if (bars[index]) bars[index].innerText = newName.trim();
+            }
+        }
+
+        function openNotes(index) {
+            currentEditingIndex = index;
+            document.getElementById('modalTitle').innerText = `catatan: ${tasks[index].name}`;
+            document.getElementById('modalTextarea').value = tasks[index].notes || "";
+            document.getElementById('notesModal').classList.add('active');
         }
 
         function closeModal() {
-            document.getElementById('taskModal').style.display = 'none';
-            activeModalTaskId = null;
+            document.getElementById('notesModal').classList.remove('active');
+            currentEditingIndex = null;
         }
 
-        async function saveDescription() {
-            if(!activeModalTaskId) return;
-            const desc = document.getElementById('modalInputDesc').value;
-            await supabase.from('tasks').update({ description: desc }).eq('id', activeModalTaskId);
-            const task = tasksData.find(t => t.id === activeModalTaskId);
-            if(task) task.description = desc;
+        function closeModalOnOverlay(e) {
+            if (e.target.id === 'notesModal') closeModal();
+        }
+
+        function saveNotes() {
+            if (currentEditingIndex !== null) {
+                tasks[currentEditingIndex].notes = document.getElementById('modalTextarea').value;
+            }
             closeModal();
         }
+
+        function deleteTask(index) {
+            tasks.splice(index, 1);
+            renderContent();
+        }
+
+        function dragStart(e, index) { draggedTaskIndex = index; e.dataTransfer.effectAllowed = 'move'; }
+        function dragOver(e) { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
+        function dragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
+        
+        function drop(e, targetIndex) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('drag-over');
+            if (draggedTaskIndex === null) return;
+
+            const sidebarEl = document.getElementById('sidebarContainer');
+            const sidebarRect = sidebarEl.getBoundingClientRect();
+            
+            let relativeX = e.clientX - sidebarRect.left;
+            let targetLevel = Math.floor(relativeX / 14);
+            
+            if (targetIndex > 0) {
+                let checkIdx = targetIndex > draggedTaskIndex ? targetIndex : targetIndex - 1;
+                let maxAllowedLevel = tasks[checkIdx].level + 1;
+                targetLevel = Math.min(targetLevel, maxAllowedLevel);
+            } else {
+                targetLevel = 0;
+            }
+            
+            targetLevel = Math.max(0, Math.min(targetLevel, 6));
+
+            const task = tasks.splice(draggedTaskIndex, 1)[0];
+            task.level = targetLevel;
+            tasks.splice(targetIndex, 0, task);
+            
+            renderContent();
+            draggedTaskIndex = null;
+        }
+
+        function initAction(e, index, action) {
+            e.preventDefault();
+            activeBar = index; actionType = action; startMouseX = e.clientX;
+            initialStartWeek = tasks[index].startWeek; initialEndWeek = tasks[index].endWeek;
+            
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', stopAction);
+        }
+
+        function handleMouseMove(e) {
+            if (activeBar === null) return;
+            const weekShift = Math.round((e.clientX - startMouseX) / weekWidth);
+            let task = tasks[activeBar];
+            const maxWeeks = getWeeksInYear(timelineConfig.startYear);
+
+            if (actionType === 'move') {
+                const dur = initialEndWeek - initialStartWeek;
+                let ns = initialStartWeek + weekShift;
+                if (ns < 1) ns = 1; if (ns + dur > maxWeeks) ns = maxWeeks - dur;
+                task.startWeek = ns; task.endWeek = ns + dur;
+            } else if (actionType === 'resize-left') {
+                let ns = initialStartWeek + weekShift;
+                if (ns < 1) ns = 1; if (ns > task.endWeek) ns = task.endWeek;
+                task.startWeek = ns;
+            } else if (actionType === 'resize-right') {
+                let ne = initialEndWeek + weekShift;
+                if (ne > maxWeeks) ne = maxWeeks; if (ne < task.startWeek) ne = task.startWeek;
+                task.endWeek = ne;
+            }
+            renderContent();
+        }
+
+        function stopAction() { 
+            activeBar = null; 
+            actionType = null; 
+            document.removeEventListener('mousemove', handleMouseMove); 
+            document.removeEventListener('mouseup', stopAction); 
+        }
+
+        function isParent(index) {
+            if (index >= tasks.length - 1) return false;
+            return tasks[index + 1].level > tasks[index].level;
+        }
+
+        function updateParentTimelines() {
+            for (let i = 0; i < tasks.length; i++) {
+                let curLvl = tasks[i].level;
+                let children = [], j = i + 1;
+                while (j < tasks.length && tasks[j].level > curLvl) { children.push(tasks[j]); j++; }
+                if (children.length > 0) {
+                    tasks[i].startWeek = Math.min(...children.map(c => c.startWeek));
+                    tasks[i].endWeek = Math.max(...children.map(c => c.endWeek));
+                }
+            }
+        }
+
+        window.onload = initGantt;
     </script>
 </body>
 </html>
