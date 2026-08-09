@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zen Gantt Chart - Todoist Expand Collapse</title>
+    <title>Zen Gantt Chart - Adaptive PWA</title>
 
     <!-- Favicon & Mobile Homescreen Icons -->
     <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/tomoxyo157/custom-gantt-app/4ba018d3eba024c6c4e1aefe1f007789ba037e6f/white.png">
@@ -26,8 +26,8 @@
             --muted-color: #6b665e;
             --accent-color: #38342f;
             --line-color: rgba(216, 211, 200, 0.6);
-            --sidebar-width: 320px;
-            --row-height: 28px;
+            --sidebar-width: 340px;
+            --row-height: 34px;
             --shadow-md: 0 8px 24px rgba(0,0,0,0.06);
             --red-line: #e63946;
         }
@@ -60,7 +60,8 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            padding: 24px 36px;
+            padding: 16px 24px;
+            font-size: 16px;
         }
 
         /* Overlay PIN Lock */
@@ -84,16 +85,16 @@
             border: 1px solid var(--border-color);
             box-shadow: var(--shadow-md);
             text-align: center;
-            width: 280px;
+            width: 300px;
         }
-        .pin-card h2 { font-size: 1.1rem; margin-bottom: 6px; font-weight: 500; }
-        .pin-card p { font-size: 0.75rem; color: var(--muted-color); margin-bottom: 16px; }
+        .pin-card h2 { font-size: 1.3rem; margin-bottom: 6px; font-weight: 500; }
+        .pin-card p { font-size: 0.9rem; color: var(--muted-color); margin-bottom: 16px; }
         .pin-input {
             width: 100%;
-            padding: 8px;
+            padding: 10px;
             text-align: center;
-            font-size: 1.2rem;
-            letter-spacing: 6px;
+            font-size: 1.3rem;
+            letter-spacing: 8px;
             border: 1px solid var(--border-color);
             background: var(--bg-color);
             color: var(--text-color);
@@ -105,7 +106,7 @@
         /* Header Bar */
         header {
             background: var(--card-bg);
-            padding: 8px 18px;
+            padding: 12px 20px;
             border: 1px solid var(--border-color);
             border-bottom: none;
             border-radius: 10px 10px 0 0;
@@ -113,13 +114,13 @@
             justify-content: space-between;
             align-items: center;
         }
-        .header-title { font-size: 0.95rem; font-weight: 500; letter-spacing: 0.5px; }
-        .header-controls { display: flex; align-items: center; gap: 14px; }
+        .header-title { font-size: 1.1rem; font-weight: 500; letter-spacing: 0.5px; }
+        .header-controls { display: flex; align-items: center; gap: 12px; }
 
         .theme-switch {
             position: relative;
-            width: 32px;
-            height: 16px;
+            width: 38px;
+            height: 20px;
             background: var(--card-bg);
             border: 1px solid var(--border-color);
             border-radius: 20px;
@@ -129,25 +130,26 @@
             padding: 1px;
         }
         .theme-switch-handle {
-            width: 12px;
-            height: 12px;
+            width: 16px;
+            height: 16px;
             background: var(--text-color);
             border-radius: 50%;
             transform: translateX(0);
             transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
-        body.dark-mode .theme-switch-handle { transform: translateX(14px); }
+        body.dark-mode .theme-switch-handle { transform: translateX(18px); }
 
         .btn-header {
             background: transparent;
             border: 1px solid var(--border-color);
             color: var(--text-color);
-            padding: 2px 8px;
+            padding: 4px 12px;
             border-radius: 4px;
-            font-size: 0.7rem;
+            font-size: 0.85rem;
             cursor: pointer;
         }
         .btn-header:hover { background: var(--border-color); }
+        .btn-header.active-mode { background: var(--text-color); color: var(--bg-color); border-color: var(--text-color); }
 
         /* Main Container */
         .gantt-wrapper {
@@ -162,7 +164,7 @@
         }
 
         .sidebar-resizer {
-            width: 5px;
+            width: 6px;
             background: transparent;
             cursor: col-resize;
             z-index: 20;
@@ -174,7 +176,7 @@
         .gantt-sidebar {
             width: var(--sidebar-width);
             min-width: 200px;
-            max-width: 500px;
+            max-width: 600px;
             background: var(--card-bg);
             border-right: 1px solid var(--border-color);
             display: flex;
@@ -183,11 +185,12 @@
         }
 
         .sidebar-header {
-            height: 48px;
+            height: 54px;
             border-bottom: 1px solid var(--border-color);
             display: flex;
             align-items: center;
             padding: 0 14px;
+            flex-shrink: 0;
         }
 
         .sidebar-body {
@@ -201,14 +204,13 @@
         .empty-tasks-notice {
             padding: 20px;
             text-align: center;
-            font-size: 0.75rem;
+            font-size: 0.9rem;
             color: var(--muted-color);
         }
 
         /* Task Row & Drag States */
         .task-row-container { position: relative; }
 
-        /* Insert Trigger (Hover Button + Line) */
         .insert-trigger {
             height: 6px;
             position: absolute;
@@ -236,17 +238,17 @@
             background: var(--text-color);
             color: var(--bg-color);
             border: none;
-            width: 14px;
-            height: 14px;
+            width: 16px;
+            height: 16px;
             border-radius: 50%;
-            font-size: 0.65rem;
+            font-size: 0.8rem;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
             opacity: 0;
             transition: opacity 0.2s;
-            top: -6px;
+            top: -7px;
             left: 50%;
             transform: translateX(-50%);
         }
@@ -263,7 +265,6 @@
             user-select: none;
         }
         
-        /* Drag Indicators */
         .task-row.drag-over-top { border-top: 2px solid var(--accent-color) !important; }
         .task-row.drag-over-bottom { border-bottom: 2px solid var(--accent-color) !important; }
         .task-row.drag-over-child { background: var(--border-color) !important; opacity: 0.85; }
@@ -272,7 +273,7 @@
             display: flex;
             align-items: center;
             width: 100%;
-            gap: 6px;
+            gap: 8px;
             position: relative;
             z-index: 2;
             padding-left: 6px;
@@ -281,20 +282,18 @@
         .drag-handle {
             cursor: grab;
             color: var(--muted-color);
-            font-size: 0.9rem;
+            font-size: 1rem;
             padding: 0 2px;
             opacity: 0.5;
-            letter-spacing: -1px;
         }
         .drag-handle:hover { opacity: 1; }
         .drag-handle:active { cursor: grabbing; }
 
-        /* Expand / Collapse Toggle Styling */
         .toggle-btn {
-            font-size: 0.55rem;
+            font-size: 0.7rem;
             cursor: pointer;
             color: var(--muted-color);
-            width: 12px;
+            width: 14px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -302,39 +301,47 @@
             transition: color 0.2s ease;
         }
         .toggle-btn:hover { color: var(--text-color); }
-        .toggle-btn-placeholder { width: 12px; display: inline-block; }
+        .toggle-btn-placeholder { width: 14px; display: inline-block; }
 
         .task-name-text {
             flex: 1;
-            font-size: 0.75rem;
+            font-size: 0.9rem;
             color: var(--text-color);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            padding: 1px 4px;
+            padding: 2px 6px;
             border-radius: 3px;
             outline: none;
         }
         .task-name-text:focus { background: var(--bg-color); border: 1px solid var(--border-color); }
         
+        .task-row.completed .task-name-text {
+            text-decoration: line-through;
+            color: var(--muted-color);
+            opacity: 0.7;
+        }
+
         .task-actions { display: flex; gap: 4px; opacity: 0; transition: opacity 0.2s; }
-        .task-row:hover .task-actions { opacity: 1; }
+        .task-row:hover .task-actions, body.viewer-mode-active .task-row .task-actions { opacity: 1; }
+        
         .action-btn {
             background: none;
             border: none;
-            padding: 1px 5px;
+            padding: 2px 6px;
             border-radius: 3px;
-            font-size: 0.65rem;
+            font-size: 0.8rem;
             cursor: pointer;
             color: var(--muted-color);
         }
         .action-btn:hover { background: var(--border-color); color: var(--text-color); }
         .action-btn.del:hover { color: #ff3b30; }
+        .action-btn.check.active { color: #2a9d8f; font-weight: bold; }
 
-        /* Timeline View Area */
+        /* Timeline Area - Persentase Adaptif (%) Murni */
         .gantt-timeline {
             flex: 1;
-            overflow-x: auto;
+            overflow-x: hidden;
             overflow-y: auto;
             background: var(--card-bg);
             position: relative;
@@ -342,39 +349,44 @@
         }
         .gantt-timeline::-webkit-scrollbar { display: none; }
         
-        .timeline-grid-header { display: flex; flex-direction: column; position: sticky; top: 0; z-index: 8; background: var(--card-bg); }
+        .timeline-grid-header { display: flex; flex-direction: column; position: sticky; top: 0; z-index: 8; background: var(--card-bg); width: 100%; height: 54px; }
         
-        .years-row { display: flex; height: 18px; border-bottom: 1px solid var(--border-color); background: var(--bg-color); }
-        .year-cell { display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 600; color: var(--text-color); border-right: 1px solid var(--border-color); }
+        .years-row { display: flex; height: 20px; border-bottom: 1px solid var(--border-color); background: var(--bg-color); width: 100%; }
+        .year-cell { display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 600; color: var(--text-color); border-right: 1px solid var(--border-color); width: 100%; }
 
-        .months-row, .weeks-row { display: flex; height: 15px; border-bottom: 1px solid var(--border-color); }
-        .month-cell { border-right: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; font-size: 0.6rem; color: var(--muted-color); }
-        .week-cell { width: 22px; min-width: 22px; border-right: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; font-size: 0.5rem; color: var(--muted-color); opacity: 0.7; }
+        .months-row, .weeks-row { display: flex; height: 17px; border-bottom: 1px solid var(--border-color); width: 100%; }
+        .month-cell { border-right: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; font-size: 0.72rem; color: var(--muted-color); }
+        .week-cell { border-right: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; font-size: 0.65rem; color: var(--muted-color); opacity: 0.7; }
         .week-cell.current { font-weight: bold; color: var(--red-line); opacity: 1; }
 
-        .timeline-rows-container { position: relative; }
-        .timeline-row-lane { height: var(--row-height); border-bottom: 1px solid var(--border-color); position: relative; display: flex; align-items: center; }
+        /* Perbaikan: min-height disesuaikan dengan mengalangi tinggi grid header (54px) */
+        .timeline-rows-container { position: relative; width: 100%; min-height: calc(100% - 54px); }
+        .timeline-row-lane { height: var(--row-height); border-bottom: 1px solid var(--border-color); position: relative; display: flex; align-items: center; width: 100%; }
 
         .grid-bg-line { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line-color); pointer-events: none; }
 
         /* Task Bars & Handles */
         .task-bar {
             position: absolute;
-            height: 14px;
+            height: 18px;
             background: var(--text-color);
             border-radius: 3px;
             display: flex;
             align-items: center;
             color: var(--bg-color);
-            font-size: 0.55rem;
+            font-size: 0.7rem;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
         .task-bar.parent {
             background: var(--muted-color);
             font-weight: 600;
         }
+        .task-bar.completed-bar {
+            opacity: 0.4;
+            background: var(--muted-color) !important;
+        }
         
-        .bar-content { flex: 1; padding: 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: move; }
+        .bar-content { flex: 1; padding: 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: move; }
 
         .resizer { width: 6px; height: 100%; position: absolute; top: 0; cursor: col-resize; z-index: 2; opacity: 0; transition: opacity 0.2s; }
         .task-bar:hover .resizer { opacity: 1; background: rgba(255,255,255,0.3); }
@@ -391,7 +403,7 @@
             pointer-events: none;
         }
 
-        /* Modal Animated Styling */
+        /* Modal Catatan */
         .modal-overlay {
             position: fixed;
             inset: 0;
@@ -411,9 +423,9 @@
         }
         .modal-card {
             background: var(--card-bg);
-            padding: 18px;
-            border-radius: 8px;
-            width: 320px;
+            padding: 22px;
+            border-radius: 10px;
+            width: 380px;
             border: 1px solid var(--border-color);
             box-shadow: var(--shadow-md);
             transform: scale(0.92);
@@ -421,47 +433,58 @@
         }
         .modal-overlay.active .modal-card { transform: scale(1); }
         
-        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; }
-        .modal-title { font-size: 0.8rem; font-weight: 600; color: var(--text-color); }
-        .btn-close { background: none; border: none; font-size: 1rem; color: var(--muted-color); cursor: pointer; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }
+        .modal-title { font-size: 0.95rem; font-weight: 600; color: var(--text-color); }
+        .btn-close { background: none; border: none; font-size: 1.2rem; color: var(--muted-color); cursor: pointer; }
         
-        /* Fixed Textarea */
-        .modal textarea {
-            width: 100%;
-            height: 110px;
-            padding: 10px;
-            border: 1px solid var(--border-color);
-            background: var(--bg-color);
-            color: var(--text-color);
-            border-radius: 6px;
+        .modal-card textarea, #modalTextarea {
+            width: 100% !important;
+            height: 140px !important;
+            padding: 12px !important;
+            border: 1px solid var(--border-color) !important;
+            background: var(--bg-color) !important;
+            color: var(--text-color) !important;
+            border-radius: 6px !important;
+            margin-bottom: 16px !important;
+            outline: none !important;
+            font-size: 0.9rem !important;
+            line-height: 1.5 !important;
+            box-sizing: border-box !important;
+            display: block !important;
+            
             resize: none !important;
-            margin-bottom: 14px;
-            outline: none;
-            font-size: 0.75rem;
-            line-height: 1.4;
-            box-sizing: border-box;
-            display: block;
-            overflow-y: auto;
+            overflow-y: auto !important;
+            -webkit-appearance: none !important;
+            -moz-appearance: none !important;
+            appearance: none !important;
         }
-        .modal textarea::-webkit-resizer { display: none !important; }
-        .modal textarea:focus { border-color: var(--accent-color); }
         
-        .modal-actions { display: flex; justify-content: flex-end; gap: 6px; }
-        .btn { background: var(--text-color); color: var(--bg-color); border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.7rem; }
+        .modal-card textarea::-webkit-resizer,
+        #modalTextarea::-webkit-resizer {
+            display: none !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+            width: 0 !important;
+            height: 0 !important;
+        }
+        
+        .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+        .btn { background: var(--text-color); color: var(--bg-color); border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; }
         .btn-secondary { background: transparent; color: var(--muted-color); border: 1px solid var(--border-color); }
         .btn-secondary:hover { color: var(--text-color); background: var(--border-color); }
 
+        /* Responsive Mobile Styling */
         @media (max-width: 768px) {
-            body { padding: 10px; }
-            :root { --sidebar-width: 200px; }
+            body { padding: 8px; }
+            :root { --sidebar-width: 210px; }
             .task-actions { display: flex !important; opacity: 1 !important; }
-            .sidebar-resizer { display: none; }
             .resizer { display: none !important; }
             .bar-content { cursor: default; }
+            .gantt-timeline { overflow-x: auto !important; }
         }
     </style>
 </head>
-<body class="dark-mode">
+<body class="dark-mode" id="bodyRoot">
 
     <!-- Screen PIN Authentication Overlay -->
     <div class="pin-overlay" id="pinOverlay">
@@ -479,6 +502,7 @@
     <header>
         <div class="header-title">1 year / zen gantt</div>
         <div class="header-controls">
+            <button class="btn-header" id="viewerModeBtn" onclick="toggleViewerMode()">viewer mode: off</button>
             <button class="btn-header" onclick="logout()">logout</button>
             <div class="theme-switch" onclick="toggleTheme()" title="toggle theme">
                 <div class="theme-switch-handle" id="switchHandle"></div>
@@ -489,7 +513,6 @@
     <!-- Gantt Chart Main Area -->
     <div class="gantt-wrapper">
         <div class="gantt-sidebar" id="sidebarContainer">
-            <!-- Sidebar Header tanpa teks -->
             <div class="sidebar-header"></div>
             <div class="sidebar-body" id="sidebarBody"></div>
         </div>
@@ -523,11 +546,12 @@
 
     <script>
         let timelineConfig = { startYear: 2026, yearsCount: 1 };
-        const weekWidth = 22; 
+        const totalWeeksOfYear = 52;
         let draggedTaskIndex = null;
         let currentEditingIndex = null;
         let activeBar = null, actionType = null, startMouseX = 0;
         let childrenInitialStates = [];
+        let viewerMode = false;
 
         function getCurrentWeekOfYear() {
             const now = new Date();
@@ -538,12 +562,12 @@
         const currentSystemWeek = Math.min(Math.max(getCurrentWeekOfYear(), 1), 52);
 
         let tasks = JSON.parse(localStorage.getItem('zen_gantt_tasks')) || [
-            { id: 1, name: "A. perencanaan strategis", level: 0, startWeek: currentSystemWeek, endWeek: currentSystemWeek + 3, notes: "induk utama", collapsed: false },
-            { id: 2, name: "A1. riset pasar & target", level: 1, startWeek: currentSystemWeek, endWeek: currentSystemWeek + 1, notes: "anak dari A", collapsed: false },
-            { id: 3, name: "A1a. sebar kuesioner", level: 2, startWeek: currentSystemWeek, endWeek: currentSystemWeek + 1, notes: "cucu dari A", collapsed: false },
-            { id: 4, name: "A1b. olah data spss", level: 2, startWeek: currentSystemWeek + 1, endWeek: currentSystemWeek + 2, notes: "cucu dari A", collapsed: false },
-            { id: 5, name: "A2. penyusunan anggaran", level: 1, startWeek: currentSystemWeek + 2, endWeek: currentSystemWeek + 3, notes: "anak dari A", collapsed: false },
-            { id: 6, name: "B. sistem backend inti", level: 0, startWeek: currentSystemWeek + 4, endWeek: currentSystemWeek + 8, notes: "induk kedua", collapsed: false }
+            { id: 1, name: "A. perencanaan strategis", level: 0, startWeek: currentSystemWeek, endWeek: currentSystemWeek + 3, notes: "induk utama", collapsed: false, completed: false },
+            { id: 2, name: "A1. riset pasar & target", level: 1, startWeek: currentSystemWeek, endWeek: currentSystemWeek + 1, notes: "anak dari A", collapsed: false, completed: false },
+            { id: 3, name: "A1a. sebar kuesioner", level: 2, startWeek: currentSystemWeek, endWeek: currentSystemWeek + 1, notes: "cucu dari A", collapsed: false, completed: false },
+            { id: 4, name: "A1b. olah data spss", level: 2, startWeek: currentSystemWeek + 1, endWeek: currentSystemWeek + 2, notes: "cucu dari A", collapsed: false, completed: false },
+            { id: 5, name: "A2. penyusunan anggaran", level: 1, startWeek: currentSystemWeek + 2, endWeek: currentSystemWeek + 3, notes: "anak dari A", collapsed: false, completed: false },
+            { id: 6, name: "B. sistem backend inti", level: 0, startWeek: currentSystemWeek + 4, endWeek: currentSystemWeek + 8, notes: "induk kedua", collapsed: false, completed: false }
         ];
 
         function saveTasksToStorage() {
@@ -572,6 +596,34 @@
         window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
         document.getElementById('pinInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') checkPin(); });
 
+        function toggleViewerMode() {
+            viewerMode = !viewerMode;
+            const btn = document.getElementById('viewerModeBtn');
+            const root = document.getElementById('bodyRoot');
+            if (viewerMode) {
+                btn.innerText = "viewer mode: on";
+                btn.classList.add('active-mode');
+                root.classList.add('viewer-mode-active');
+            } else {
+                btn.innerText = "viewer mode: off";
+                btn.classList.remove('active-mode');
+                root.classList.remove('viewer-mode-active');
+            }
+        }
+
+        if (window.innerWidth <= 768) {
+            viewerMode = true;
+            document.addEventListener('DOMContentLoaded', () => {
+                const btn = document.getElementById('viewerModeBtn');
+                if(btn) {
+                    btn.innerText = "viewer mode: on";
+                    btn.classList.add('active-mode');
+                    document.getElementById('bodyRoot').classList.add('viewer-mode-active');
+                }
+            });
+        }
+
+        // Sidebar Resizer
         const resizer = document.getElementById('sidebarResizer');
         let isResizingSidebar = false;
 
@@ -584,8 +636,10 @@
 
         function handleSidebarResize(e) {
             if (!isResizingSidebar) return;
-            const newWidth = Math.max(180, Math.min(e.clientX - 36, 500));
+            const newWidth = Math.max(180, Math.min(e.clientX - 24, 600));
             document.documentElement.style.setProperty('--sidebar-width', newWidth + 'px');
+            renderHeader();
+            renderContent(true);
         }
 
         function stopSidebarResize() {
@@ -595,10 +649,32 @@
             document.removeEventListener('mouseup', stopSidebarResize);
         }
 
-        function getWeeksInYear(year) {
-            const d = new Date(year, 11, 31);
-            return (d.getDay() === 4 || (d.getDay() === 3 && ((year % 4 === 0 && year % 100 !== 0) || year % 400 === 0))) ? 53 : 52;
-        }
+        window.addEventListener('resize', () => {
+            renderHeader();
+            renderContent(true);
+        });
+
+        // Sync Vertical Scroll Sidebar & Timeline
+        const sidebarBody = document.getElementById('sidebarBody');
+        const timelineContainer = document.getElementById('timelineContainer');
+        let isSyncingSidebar = false;
+        let isSyncingTimeline = false;
+
+        sidebarBody.addEventListener('scroll', () => {
+            if (!isSyncingSidebar) {
+                isSyncingTimeline = true;
+                timelineContainer.scrollTop = sidebarBody.scrollTop;
+            }
+            isSyncingSidebar = false;
+        });
+
+        timelineContainer.addEventListener('scroll', () => {
+            if (!isSyncingTimeline) {
+                isSyncingSidebar = true;
+                sidebarBody.scrollTop = timelineContainer.scrollTop;
+            }
+            isSyncingTimeline = false;
+        });
 
         function initGantt() {
             if (sessionStorage.getItem('zen_gantt_auth') === 'true') {
@@ -606,53 +682,47 @@
             }
             renderHeader();
             renderContent();
-            
-            setTimeout(() => {
-                const container = document.getElementById('timelineContainer');
-                const redLinePos = (currentSystemWeek - 1) * weekWidth;
-                container.scrollLeft = redLinePos - (container.clientWidth / 2) + (weekWidth / 2);
-            }, 100);
         }
 
         function toggleTheme() { document.body.classList.toggle('dark-mode'); }
 
         function renderHeader() {
-            let totalWeeks = 0;
-            let yearsHTML = '', monthHTML = '', weekHTML = '';
+            let yearsHTML = `<div class="year-cell">2026</div>`;
+            let monthHTML = '', weekHTML = '';
 
-            for (let y = 0; y < timelineConfig.yearsCount; y++) {
-                const yr = timelineConfig.startYear + y;
-                const wCount = getWeeksInYear(yr);
-                totalWeeks += wCount;
-                yearsHTML += `<div class="year-cell" style="width: ${wCount * weekWidth}px;">${yr}</div>`;
+            const monthsData = [
+                {n:"jan",w:4}, {n:"feb",w:4}, {n:"mar",w:4}, 
+                {n:"apr",w:4}, {n:"mei",w:4}, {n:"jun",w:5}, 
+                {n:"jul",w:4}, {n:"ags",w:4}, {n:"sep",w:5}, 
+                {n:"okt",w:4}, {n:"nov",w:4}, {n:"des",w:4}
+            ];
 
-                const monthsData = [
-                    {n:"jan",w:4}, {n:"feb",w:4}, {n:"mar",w:wCount === 53 ? 5 : 4}, 
-                    {n:"apr",w:4}, {n:"mei",w:4}, {n:"jun",w:5}, 
-                    {n:"jul",w:4}, {n:"ags",w:4}, {n:"sep",w:5}, 
-                    {n:"okt",w:4}, {n:"nov",w:4}, {n:"des",w:wCount === 53 ? 5 : 4}
-                ];
+            monthsData.forEach(m => {
+                const monthPercent = (m.w / totalWeeksOfYear) * 100;
+                monthHTML += `<div class="month-cell" style="width: ${monthPercent}%;">${m.n}</div>`;
+            });
 
-                monthsData.forEach(m => {
-                    monthHTML += `<div class="month-cell" style="width: ${m.w * weekWidth}px;">${m.n}</div>`;
-                });
-            }
-
-            for (let i = 1; i <= totalWeeks; i++) {
+            const weekPercent = (1 / totalWeeksOfYear) * 100;
+            for (let i = 1; i <= totalWeeksOfYear; i++) {
                 const isCurr = i === currentSystemWeek;
-                weekHTML += `<div class="week-cell ${isCurr ? 'current' : ''}">${i}</div>`;
+                weekHTML += `<div class="week-cell ${isCurr ? 'current' : ''}" style="width: ${weekPercent}%;">${i}</div>`;
             }
 
-            const totalWidth = totalWeeks * weekWidth;
-            document.getElementById('timelineGridHeader').style.width = totalWidth + 'px';
-            document.getElementById('timelineRowsContainer').style.width = totalWidth + 'px';
+            const gridHeader = document.getElementById('timelineGridHeader');
+            const rowsContainer = document.getElementById('timelineRowsContainer');
+            
+            if (window.innerWidth > 768) {
+                gridHeader.style.width = '100%';
+                rowsContainer.style.width = '100%';
+            } else {
+                gridHeader.style.width = '1200px';
+                rowsContainer.style.width = '1200px';
+            }
 
             document.getElementById('yearsRow').innerHTML = yearsHTML;
             document.getElementById('monthsRow').innerHTML = monthHTML;
             document.getElementById('weeksRow').innerHTML = weekHTML;
         }
-
-        // --- ALGORITMA TREE & VISIBILITAS (COLLAPSE/EXPAND) --- //
 
         function getSubtreeRange(index) {
             let parentLevel = tasks[index].level;
@@ -674,14 +744,11 @@
             }
         }
 
-        // Memeriksa apakah task harus disembunyikan karena induknya di-collapse
         function isTaskVisible(index) {
             let currentLevel = tasks[index].level;
             for (let i = index - 1; i >= 0; i--) {
                 if (tasks[i].level < currentLevel) {
-                    if (tasks[i].collapsed) {
-                        return false;
-                    }
+                    if (tasks[i].collapsed) return false;
                     currentLevel = tasks[i].level;
                 }
             }
@@ -691,6 +758,28 @@
         function toggleCollapse(index, e) {
             e.stopPropagation();
             tasks[index].collapsed = !tasks[index].collapsed;
+            saveTasksToStorage();
+            renderContent();
+        }
+
+        function toggleCompleteTask(index, e) {
+            e.stopPropagation();
+            if (viewerMode) return;
+            
+            const newState = !tasks[index].completed;
+            tasks[index].completed = newState;
+
+            if (isParent(index)) {
+                let parentLevel = tasks[index].level;
+                for (let i = index + 1; i < tasks.length; i++) {
+                    if (tasks[i].level > parentLevel) {
+                        tasks[i].completed = newState;
+                    } else {
+                        break;
+                    }
+                }
+            }
+
             saveTasksToStorage();
             renderContent();
         }
@@ -714,60 +803,61 @@
             let timelineHTML = '';
 
             tasks.forEach((task, index) => {
-                // Sembunyikan item jika ada induk di atasnya yang di-collapse
                 if (!isTaskVisible(index)) return;
 
                 const indent = Math.min(task.level, 6) * 14;
                 const isPar = isParent(index);
 
-                // Fitur Toggle Expand & Collapse menggantikan indikator level
                 const toggleIconHTML = isPar 
                     ? `<span class="toggle-btn" onclick="toggleCollapse(${index}, event)" title="${task.collapsed ? 'buka anak' : 'tutup anak'}">${task.collapsed ? '▶' : '▼'}</span>`
                     : `<span class="toggle-btn-placeholder"></span>`;
 
+                const editableAttr = viewerMode ? '' : `contenteditable="true" onblur="updateTaskNameInline(${index}, this.innerText)"`;
+                const dragAttrs = viewerMode ? '' : `draggable="true" ondragstart="dragStart(event, ${index})" ondragover="dragOver(event, ${index})" ondrop="drop(event, ${index})" ondragleave="dragLeave(event)"`;
+                const handleDisplay = viewerMode ? 'display:none;' : '';
+                const addTriggerHTML = viewerMode ? '' : `
+                    <div class="insert-trigger top" onclick="insertTaskAt(${index})">
+                        <div class="insert-line"><button class="plus-btn">+</button></div>
+                    </div>`;
+
                 sidebarHTML += `
                     <div class="task-row-container">
-                        <div class="insert-trigger top" onclick="insertTaskAt(${index})">
-                            <div class="insert-line"><button class="plus-btn">+</button></div>
-                        </div>
-                        <div class="task-row" draggable="true" 
-                             ondragstart="dragStart(event, ${index})" 
-                             ondragover="dragOver(event, ${index})" 
-                             ondrop="drop(event, ${index})" 
-                             ondragleave="dragLeave(event)">
-                            <div class="task-content-inner" style="padding-left: ${8 + indent}px;">
-                                <span class="drag-handle" title="drag atas/bawah & kiri/kanan">⠿</span>
+                        ${addTriggerHTML}
+                        <div class="task-row ${task.completed ? 'completed' : ''}" ${dragAttrs}>
+                            <div class="task-content-inner" style="padding-left: ${6 + indent}px;">
+                                <span class="drag-handle" style="${handleDisplay}" title="drag task">⠿</span>
                                 ${toggleIconHTML}
-                                <span class="task-name-text" contenteditable="true" onblur="updateTaskNameInline(${index}, this.innerText)">${task.name}</span>
+                                <span class="task-name-text" ${editableAttr}>${task.name}</span>
                                 <div class="task-actions">
+                                    <button class="action-btn check ${task.completed ? 'active' : ''}" onclick="toggleCompleteTask(${index}, event)" title="centang/coret task">✓</button>
                                     <button class="action-btn" onclick="openNotes(${index})" title="catatan">catatan</button>
-                                    <button class="action-btn del" onclick="deleteTask(${index})" title="hapus">✕</button>
+                                    ${viewerMode ? '' : `<button class="action-btn del" onclick="deleteTask(${index})" title="hapus">✕</button>`}
                                 </div>
                             </div>
                         </div>
-                        ${index === tasks.length - 1 ? `
+                        ${!viewerMode && index === tasks.length - 1 ? `
                         <div class="insert-trigger bottom" onclick="insertTaskAt(${index + 1})">
                             <div class="insert-line"><button class="plus-btn">+</button></div>
                         </div>` : ''}
                     </div>
                 `;
 
-                const leftPos = (task.startWeek - 1) * weekWidth;
-                const widthBar = Math.max(1, (task.endWeek - task.startWeek + 1)) * weekWidth;
+                // Kalkulasi Persentase Murni untuk Kekebalan Zoom
+                const leftPercent = ((task.startWeek - 1) / totalWeeksOfYear) * 100;
+                const widthPercent = ((task.endWeek - task.startWeek + 1) / totalWeeksOfYear) * 100;
                 
-                let handles = !isPar ? `<div class="resizer left" onmousedown="initAction(event, ${index}, 'resize-left')"></div><div class="resizer right" onmousedown="initAction(event, ${index}, 'resize-right')"></div>` : '';
-                let moveEvent = `onmousedown="initAction(event, ${index}, 'move')"`;
+                let handles = (!isPar && !viewerMode) ? `<div class="resizer left" onmousedown="initAction(event, ${index}, 'resize-left')"></div><div class="resizer right" onmousedown="initAction(event, ${index}, 'resize-right')"></div>` : '';
+                let moveEvent = (!isPar && !viewerMode) ? `onmousedown="initAction(event, ${index}, 'move')"` : '';
 
-                let totalWeeks = getWeeksInYear(timelineConfig.startYear);
                 let gridLines = '';
-                for(let w = 1; w <= totalWeeks; w++) {
-                    gridLines += `<div class="grid-bg-line" style="left: ${(w - 1) * weekWidth}px;"></div>`;
+                for(let w = 1; w <= totalWeeksOfYear; w++) {
+                    gridLines += `<div class="grid-bg-line" style="left: ${((w - 1) / totalWeeksOfYear) * 100}%;"></div>`;
                 }
 
                 timelineHTML += `
                     <div class="timeline-row-lane">
                         ${gridLines}
-                        <div class="task-bar ${isPar ? 'parent' : ''}" style="left: ${leftPos}px; width: ${widthBar}px;">
+                        <div class="task-bar ${isPar ? 'parent' : ''} ${task.completed ? 'completed-bar' : ''}" style="left: ${leftPercent}%; width: ${widthPercent}%;">
                             ${handles}
                             <div class="bar-content" ${moveEvent}>${task.name}</div>
                         </div>
@@ -775,13 +865,15 @@
                 `;
             });
 
-            timelineHTML += `<div class="current-week-line" style="left: ${(currentSystemWeek - 1) * weekWidth}px;"></div>`;
+            const currentWeekPercent = ((currentSystemWeek - 1) / totalWeeksOfYear) * 100;
+            timelineHTML += `<div class="current-week-line" style="left: ${currentWeekPercent}%;"></div>`;
             
             sidebar.innerHTML = sidebarHTML;
             timeline.innerHTML = timelineHTML;
         }
 
         function insertTaskAt(index) {
+            if (viewerMode) return;
             const newId = tasks.length > 0 ? Math.max(...tasks.map(t => t.id)) + 1 : 1;
             let inheritLevel = 0;
             if (index > 0 && tasks[index - 1]) {
@@ -794,7 +886,8 @@
                 startWeek: currentSystemWeek, 
                 endWeek: Math.min(currentSystemWeek + 2, 52), 
                 notes: "",
-                collapsed: false
+                collapsed: false,
+                completed: false
             });
             sanitizeHierarchy();
             renderContent();
@@ -824,7 +917,7 @@
         function closeModalOnOverlay(e) { if (e.target.id === 'notesModal') closeModal(); }
 
         function saveNotes() {
-            if (currentEditingIndex !== null) {
+            if (currentEditingIndex !== null && !viewerMode) {
                 tasks[currentEditingIndex].notes = document.getElementById('modalTextarea').value;
                 saveTasksToStorage();
             }
@@ -832,20 +925,21 @@
         }
 
         function deleteTask(index) {
+            if (viewerMode) return;
             const range = getSubtreeRange(index);
             tasks.splice(range.start, range.count);
             sanitizeHierarchy();
             renderContent();
         }
 
-        // --- ALGORITMA DRAG & DROP TODOIST WITH SMART POSITIONING --- //
-
         function dragStart(e, index) { 
+            if (viewerMode) return;
             draggedTaskIndex = index; 
             e.dataTransfer.effectAllowed = 'move'; 
         }
 
         function dragOver(e, targetIndex) {
+            if (viewerMode) return;
             e.preventDefault();
             const row = e.currentTarget;
             const rect = row.getBoundingClientRect();
@@ -863,10 +957,12 @@
         }
 
         function dragLeave(e) {
+            if (viewerMode) return;
             e.currentTarget.classList.remove('drag-over-top', 'drag-over-bottom', 'drag-over-child');
         }
         
         function drop(e, targetIndex) {
+            if (viewerMode) return;
             e.preventDefault();
             const row = e.currentTarget;
             row.classList.remove('drag-over-top', 'drag-over-bottom', 'drag-over-child');
@@ -874,7 +970,6 @@
             if (draggedTaskIndex === null) return;
 
             const draggedRange = getSubtreeRange(draggedTaskIndex);
-
             if (targetIndex >= draggedRange.start && targetIndex <= draggedRange.end) return;
 
             const draggedBlock = tasks.splice(draggedRange.start, draggedRange.count);
@@ -922,9 +1017,8 @@
             draggedTaskIndex = null;
         }
 
-        // --- MANAJEMEN TIMELINE & DRAG DURATION --- //
-
         function initAction(e, index, action) {
+            if (viewerMode) return;
             e.preventDefault();
             activeBar = index; 
             actionType = action; 
@@ -947,9 +1041,12 @@
         }
 
         function handleMouseMove(e) {
-            if (activeBar === null) return;
-            const weekShift = Math.round((e.clientX - startMouseX) / weekWidth);
-            const maxWeeks = getWeeksInYear(timelineConfig.startYear);
+            if (activeBar === null || viewerMode) return;
+            const container = document.getElementById('timelineRowsContainer');
+            const containerWidth = container.clientWidth;
+            const pxPerWeek = containerWidth / totalWeeksOfYear;
+            
+            const weekShift = Math.round((e.clientX - startMouseX) / pxPerWeek);
 
             const parentInitial = childrenInitialStates.find(s => s.idx === activeBar);
             if (!parentInitial) return;
@@ -957,7 +1054,7 @@
             const dur = parentInitial.endWeek - parentInitial.startWeek;
             let ns = parentInitial.startWeek + weekShift;
             if (ns < 1) ns = 1; 
-            if (ns + dur > maxWeeks) ns = maxWeeks - dur;
+            if (ns + dur > totalWeeksOfYear) ns = totalWeeksOfYear - dur;
             
             const actualShift = ns - parentInitial.startWeek;
 
@@ -968,7 +1065,7 @@
                     let newStart = state.startWeek + actualShift;
                     
                     if (newStart < 1) newStart = 1;
-                    if (newStart + taskDur > maxWeeks) newStart = maxWeeks - taskDur;
+                    if (newStart + taskDur > totalWeeksOfYear) newStart = totalWeeksOfYear - taskDur;
                     
                     taskObj.startWeek = newStart;
                     taskObj.endWeek = newStart + taskDur;
@@ -982,7 +1079,7 @@
             } else if (actionType === 'resize-right') {
                 let task = tasks[activeBar];
                 let ne = parentInitial.endWeek + weekShift;
-                if (ne > maxWeeks) ne = maxWeeks; 
+                if (ne > totalWeeksOfYear) ne = totalWeeksOfYear; 
                 if (ne < task.startWeek) ne = task.startWeek;
                 task.endWeek = ne;
             }
