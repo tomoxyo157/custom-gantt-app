@@ -9,7 +9,7 @@
     <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/tomoxyo157/custom-gantt-app/4ba018d3eba024c6c4e1aefe1f007789ba037e6f/white.png">
     <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/tomoxyo157/custom-gantt-app/4ba018d3eba024c6c4e1aefe1f007789ba037e6f/black.png">
 
-    <!-- PWA Web App Manifest (File Fisik) -->
+    <!-- PWA Web App Manifest -->
     <link rel="manifest" href="manifest.json">
 
     <!-- Supabase JS Client -->
@@ -473,7 +473,7 @@
             <p>akses rahasia gantt chart lokal</p>
             <input type="password" id="pinInput" class="pin-input" maxlength="6" autofocus placeholder="••••">
             <div style="display: flex; gap: 6px; justify-content: center;">
-                <button class="btn" type="button" onclick="checkPin()">masuk</button>
+                <button class="btn" type="button" id="loginBtn">masuk</button>
             </div>
         </div>
     </div>
@@ -534,13 +534,13 @@
             });
         }
 
-        // === KONFIGURASI SUPABASE ===
+        // === INISIALISASI SUPABASE AMAN DARI KONFLIK VARIABEL ===
         const SUPABASE_URL = 'https://movcjscdntwckaslnumn.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vdmNqc2NkbnR3Y2thc2xudW1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUwNDU3ODUsImV4cCI6MjEwMDYyMTc4NX0.rGYGREApohqwSaArGr4DtZXeuUJ0OUE7QeOyNjpswv8';
 
-        let supabase = null;
-        if (typeof window.supabase !== 'undefined' && SUPABASE_URL !== '') {
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        let dbClient = null;
+        if (window.supabase && SUPABASE_URL !== '') {
+            dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         }
 
         const totalWeeksOfYear = 52;
@@ -570,9 +570,9 @@
 
         // Memuat data dari Supabase
         async function loadTasksFromSupabase() {
-            if (!supabase) return;
+            if (!dbClient) return;
             try {
-                const { data, error } = await supabase
+                const { data, error } = await dbClient
                     .from('tasks')
                     .select('*')
                     .order('sort_order', { ascending: true });
@@ -598,8 +598,7 @@
         // Menyimpan data ke Supabase & LocalStorage
         async function saveTasksToStorage() {
             localStorage.setItem('zen_gantt_tasks', JSON.stringify(tasks));
-
-            if (!supabase) return;
+            if (!dbClient) return;
 
             try {
                 const payload = tasks.map((t, idx) => {
@@ -619,7 +618,7 @@
                     return row;
                 });
 
-                const { data, error } = await supabase
+                const { data, error } = await dbClient
                     .from('tasks')
                     .upsert(payload, { onConflict: 'id' })
                     .select();
@@ -635,7 +634,7 @@
             }
         }
 
-        // === OTENTIKASI PERMANEN PERANGKAT (localStorage) ===
+        // === OTENTIKASI & PIN CHECKER (DIPERBAIKI) ===
         function checkPin() {
             const inputEl = document.getElementById('pinInput');
             const overlayEl = document.getElementById('pinOverlay');
@@ -672,10 +671,15 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             const pinInput = document.getElementById('pinInput');
+            const loginBtn = document.getElementById('loginBtn');
+
             if (pinInput) {
                 pinInput.addEventListener('keydown', (e) => { 
                     if (e.key === 'Enter') checkPin(); 
                 });
+            }
+            if (loginBtn) {
+                loginBtn.addEventListener('click', checkPin);
             }
         });
 
@@ -760,7 +764,6 @@
         });
 
         async function initGantt() {
-            // Cek apakah perangkat sudah pernah login via localStorage
             if (localStorage.getItem('zen_gantt_auth') === 'true') {
                 const overlayEl = document.getElementById('pinOverlay');
                 if (overlayEl) {
@@ -770,13 +773,11 @@
             }
 
             renderHeader();
-
             await loadTasksFromSupabase();
             renderContent();
 
-            // Realtime Sync Supabase (Perubahan di HP langsung terlihat di Laptop)
-            if (supabase) {
-                supabase.channel('public:tasks')
+            if (dbClient) {
+                dbClient.channel('public:tasks')
                     .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, async () => {
                         await loadTasksFromSupabase();
                         renderContent(true);
@@ -1027,10 +1028,10 @@
             const range = getSubtreeRange(index);
             const deletedTasks = tasks.splice(range.start, range.count);
             
-            if (supabase) {
+            if (dbClient) {
                 const deletedIds = deletedTasks.map(t => t.id).filter(id => id);
                 if (deletedIds.length > 0) {
-                    await supabase.from('tasks').delete().in('id', deletedIds);
+                    await dbClient.from('tasks').delete().in('id', deletedIds);
                 }
             }
 
