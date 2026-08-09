@@ -473,7 +473,7 @@
             <p>akses rahasia gantt chart lokal</p>
             <input type="password" id="pinInput" class="pin-input" maxlength="6" autofocus placeholder="••••">
             <div style="display: flex; gap: 6px; justify-content: center;">
-                <button class="btn" onclick="checkPin()">masuk</button>
+                <button class="btn" type="button" onclick="checkPin()">masuk</button>
             </div>
         </div>
     </div>
@@ -535,11 +535,11 @@
         }
 
         // === KONFIGURASI SUPABASE ===
-        const SUPABASE_URL = 'https://movcjscdntwckaslnumn.supabase.co'; // GANTI DENGAN URL SUPABASE ANDA
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vdmNqc2NkbnR3Y2thc2xudW1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUwNDU3ODUsImV4cCI6MjEwMDYyMTc4NX0.rGYGREApohqwSaArGr4DtZXeuUJ0OUE7QeOyNjpswv8';            // GANTI DENGAN ANON KEY SUPABASE ANDA
+        const SUPABASE_URL = 'https://movcjscdntwckaslnumn.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vdmNqc2NkbnR3Y2thc2xudW1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUwNDU3ODUsImV4cCI6MjEwMDYyMTc4NX0.rGYGREApohqwSaArGr4DtZXeuUJ0OUE7QeOyNjpswv8';
 
         let supabase = null;
-        if (typeof window.supabase !== 'undefined' && SUPABASE_URL !== 'https://xyzcompany.supabase.co') {
+        if (typeof window.supabase !== 'undefined' && SUPABASE_URL !== '') {
             supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         }
 
@@ -635,27 +635,49 @@
             }
         }
 
+        // === OTENTIKASI PERMANEN PERANGKAT (localStorage) ===
         function checkPin() {
-            const inputVal = document.getElementById('pinInput').value;
+            const inputEl = document.getElementById('pinInput');
+            const overlayEl = document.getElementById('pinOverlay');
+            if (!inputEl) return;
+
+            const inputVal = inputEl.value.trim();
             if (inputVal === "1234") {
-                sessionStorage.setItem('zen_gantt_auth', 'true');
-                document.getElementById('pinOverlay').style.opacity = '0';
-                setTimeout(() => { document.getElementById('pinOverlay').style.display = 'none'; }, 300);
+                localStorage.setItem('zen_gantt_auth', 'true');
+                overlayEl.style.pointerEvents = 'none';
+                overlayEl.style.opacity = '0';
+                setTimeout(() => { 
+                    overlayEl.style.display = 'none'; 
+                }, 300);
             } else {
                 alert("PIN salah! (Gunakan: 1234)");
-                document.getElementById('pinInput').value = '';
+                inputEl.value = '';
+                inputEl.focus();
             }
         }
 
         function logout() {
-            sessionStorage.removeItem('zen_gantt_auth');
-            document.getElementById('pinInput').value = '';
-            document.getElementById('pinOverlay').style.display = 'flex';
-            setTimeout(() => { document.getElementById('pinOverlay').style.opacity = '1'; }, 10);
+            localStorage.removeItem('zen_gantt_auth');
+            const inputEl = document.getElementById('pinInput');
+            const overlayEl = document.getElementById('pinOverlay');
+            if (inputEl) inputEl.value = '';
+            if (overlayEl) {
+                overlayEl.style.pointerEvents = 'auto';
+                overlayEl.style.display = 'flex';
+                setTimeout(() => { overlayEl.style.opacity = '1'; }, 10);
+            }
         }
 
         window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
-        document.getElementById('pinInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') checkPin(); });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const pinInput = document.getElementById('pinInput');
+            if (pinInput) {
+                pinInput.addEventListener('keydown', (e) => { 
+                    if (e.key === 'Enter') checkPin(); 
+                });
+            }
+        });
 
         function toggleViewerMode() {
             viewerMode = !viewerMode;
@@ -738,9 +760,15 @@
         });
 
         async function initGantt() {
-            if (sessionStorage.getItem('zen_gantt_auth') === 'true') {
-                document.getElementById('pinOverlay').style.display = 'none';
+            // Cek apakah perangkat sudah pernah login via localStorage
+            if (localStorage.getItem('zen_gantt_auth') === 'true') {
+                const overlayEl = document.getElementById('pinOverlay');
+                if (overlayEl) {
+                    overlayEl.style.display = 'none';
+                    overlayEl.style.pointerEvents = 'none';
+                }
             }
+
             renderHeader();
 
             await loadTasksFromSupabase();
