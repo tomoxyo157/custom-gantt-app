@@ -9,8 +9,11 @@
     <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/tomoxyo157/custom-gantt-app/4ba018d3eba024c6c4e1aefe1f007789ba037e6f/white.png">
     <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/tomoxyo157/custom-gantt-app/4ba018d3eba024c6c4e1aefe1f007789ba037e6f/black.png">
 
-    <!-- PWA Web App Manifest -->
-    <link rel="manifest" href='data:application/manifest+json,{"name":"Zen Gantt Chart","short_name":"ZenGantt","start_url":".","display":"standalone","background_color":"#141413","theme_color":"#141413","icons":[{"src":"https://raw.githubusercontent.com/tomoxyo157/custom-gantt-app/4ba018d3eba024c6c4e1aefe1f007789ba037e6f/black.png","sizes":"192x192","type":"image/png"}]}'>
+    <!-- PWA Web App Manifest (File Fisik) -->
+    <link rel="manifest" href="manifest.json">
+
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <!-- EB Garamond Font -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -338,7 +341,7 @@
         .action-btn.del:hover { color: #ff3b30; }
         .action-btn.check.active { color: #2a9d8f; font-weight: bold; }
 
-        /* Timeline Area - Persentase Adaptif (%) Murni */
+        /* Timeline Area */
         .gantt-timeline {
             flex: 1;
             overflow-x: hidden;
@@ -359,13 +362,12 @@
         .week-cell { border-right: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; font-size: 0.65rem; color: var(--muted-color); opacity: 0.7; }
         .week-cell.current { font-weight: bold; color: var(--red-line); opacity: 1; }
 
-        /* Perbaikan: min-height disesuaikan dengan mengalangi tinggi grid header (54px) */
         .timeline-rows-container { position: relative; width: 100%; min-height: calc(100% - 54px); }
         .timeline-row-lane { height: var(--row-height); border-bottom: 1px solid var(--border-color); position: relative; display: flex; align-items: center; width: 100%; }
 
         .grid-bg-line { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line-color); pointer-events: none; }
 
-        /* Task Bars & Handles */
+        /* Task Bars */
         .task-bar {
             position: absolute;
             height: 18px;
@@ -377,14 +379,8 @@
             font-size: 0.7rem;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
-        .task-bar.parent {
-            background: var(--muted-color);
-            font-weight: 600;
-        }
-        .task-bar.completed-bar {
-            opacity: 0.4;
-            background: var(--muted-color) !important;
-        }
+        .task-bar.parent { background: var(--muted-color); font-weight: 600; }
+        .task-bar.completed-bar { opacity: 0.4; background: var(--muted-color) !important; }
         
         .bar-content { flex: 1; padding: 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: move; }
 
@@ -417,10 +413,7 @@
             pointer-events: none;
             transition: opacity 0.2s ease;
         }
-        .modal-overlay.active {
-            opacity: 1;
-            pointer-events: auto;
-        }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
         .modal-card {
             background: var(--card-bg);
             padding: 22px;
@@ -451,21 +444,8 @@
             line-height: 1.5 !important;
             box-sizing: border-box !important;
             display: block !important;
-            
             resize: none !important;
             overflow-y: auto !important;
-            -webkit-appearance: none !important;
-            -moz-appearance: none !important;
-            appearance: none !important;
-        }
-        
-        .modal-card textarea::-webkit-resizer,
-        #modalTextarea::-webkit-resizer {
-            display: none !important;
-            opacity: 0 !important;
-            visibility: hidden !important;
-            width: 0 !important;
-            height: 0 !important;
         }
         
         .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
@@ -473,7 +453,7 @@
         .btn-secondary { background: transparent; color: var(--muted-color); border: 1px solid var(--border-color); }
         .btn-secondary:hover { color: var(--text-color); background: var(--border-color); }
 
-        /* Responsive Mobile Styling */
+        /* Mobile Styling */
         @media (max-width: 768px) {
             body { padding: 8px; }
             :root { --sidebar-width: 210px; }
@@ -498,7 +478,7 @@
         </div>
     </div>
 
-    <!-- Main Application Header -->
+    <!-- Main Header -->
     <header>
         <div class="header-title">1 year / zen gantt</div>
         <div class="header-controls">
@@ -510,7 +490,7 @@
         </div>
     </header>
 
-    <!-- Gantt Chart Main Area -->
+    <!-- Main Gantt Area -->
     <div class="gantt-wrapper">
         <div class="gantt-sidebar" id="sidebarContainer">
             <div class="sidebar-header"></div>
@@ -545,7 +525,24 @@
     </div>
 
     <script>
-        let timelineConfig = { startYear: 2026, yearsCount: 1 };
+        // === REGISTRASI SERVICE WORKER UNTUK PWA ===
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('SW Registered:', reg.scope))
+                    .catch(err => console.log('SW Register Error:', err));
+            });
+        }
+
+        // === KONFIGURASI SUPABASE ===
+        const SUPABASE_URL = 'https://movcjscdntwckaslnumn.supabase.co'; // GANTI DENGAN URL SUPABASE ANDA
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vdmNqc2NkbnR3Y2thc2xudW1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUwNDU3ODUsImV4cCI6MjEwMDYyMTc4NX0.rGYGREApohqwSaArGr4DtZXeuUJ0OUE7QeOyNjpswv8';            // GANTI DENGAN ANON KEY SUPABASE ANDA
+
+        let supabase = null;
+        if (typeof window.supabase !== 'undefined' && SUPABASE_URL !== 'https://xyzcompany.supabase.co') {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        }
+
         const totalWeeksOfYear = 52;
         let draggedTaskIndex = null;
         let currentEditingIndex = null;
@@ -561,6 +558,7 @@
         }
         const currentSystemWeek = Math.min(Math.max(getCurrentWeekOfYear(), 1), 52);
 
+        // Data bawaan awal (Fallback)
         let tasks = JSON.parse(localStorage.getItem('zen_gantt_tasks')) || [
             { id: 1, name: "A. perencanaan strategis", level: 0, startWeek: currentSystemWeek, endWeek: currentSystemWeek + 3, notes: "induk utama", collapsed: false, completed: false },
             { id: 2, name: "A1. riset pasar & target", level: 1, startWeek: currentSystemWeek, endWeek: currentSystemWeek + 1, notes: "anak dari A", collapsed: false, completed: false },
@@ -570,8 +568,71 @@
             { id: 6, name: "B. sistem backend inti", level: 0, startWeek: currentSystemWeek + 4, endWeek: currentSystemWeek + 8, notes: "induk kedua", collapsed: false, completed: false }
         ];
 
-        function saveTasksToStorage() {
+        // Memuat data dari Supabase
+        async function loadTasksFromSupabase() {
+            if (!supabase) return;
+            try {
+                const { data, error } = await supabase
+                    .from('tasks')
+                    .select('*')
+                    .order('sort_order', { ascending: true });
+
+                if (!error && data && data.length > 0) {
+                    tasks = data.map(t => ({
+                        id: t.id,
+                        name: t.name,
+                        level: t.level,
+                        startWeek: t.start_week,
+                        endWeek: t.end_week,
+                        notes: t.notes || "",
+                        collapsed: t.collapsed || false,
+                        completed: t.completed || false
+                    }));
+                    localStorage.setItem('zen_gantt_tasks', JSON.stringify(tasks));
+                }
+            } catch (e) {
+                console.error("Gagal load dari Supabase:", e);
+            }
+        }
+
+        // Menyimpan data ke Supabase & LocalStorage
+        async function saveTasksToStorage() {
             localStorage.setItem('zen_gantt_tasks', JSON.stringify(tasks));
+
+            if (!supabase) return;
+
+            try {
+                const payload = tasks.map((t, idx) => {
+                    const row = {
+                        name: t.name,
+                        level: t.level,
+                        start_week: t.startWeek,
+                        end_week: t.endWeek,
+                        notes: t.notes || "",
+                        collapsed: t.collapsed || false,
+                        completed: t.completed || false,
+                        sort_order: idx
+                    };
+                    if (t.id && typeof t.id === 'number') {
+                        row.id = t.id;
+                    }
+                    return row;
+                });
+
+                const { data, error } = await supabase
+                    .from('tasks')
+                    .upsert(payload, { onConflict: 'id' })
+                    .select();
+
+                if (!error && data) {
+                    data.forEach(savedItem => {
+                        const target = tasks.find(t => t.name === savedItem.name && t.level === savedItem.level);
+                        if (target && !target.id) target.id = savedItem.id;
+                    });
+                }
+            } catch (e) {
+                console.error("Gagal simpan ke Supabase:", e);
+            }
         }
 
         function checkPin() {
@@ -654,7 +715,7 @@
             renderContent(true);
         });
 
-        // Sync Vertical Scroll Sidebar & Timeline
+        // Sync Scroll
         const sidebarBody = document.getElementById('sidebarBody');
         const timelineContainer = document.getElementById('timelineContainer');
         let isSyncingSidebar = false;
@@ -676,12 +737,24 @@
             isSyncingTimeline = false;
         });
 
-        function initGantt() {
+        async function initGantt() {
             if (sessionStorage.getItem('zen_gantt_auth') === 'true') {
                 document.getElementById('pinOverlay').style.display = 'none';
             }
             renderHeader();
+
+            await loadTasksFromSupabase();
             renderContent();
+
+            // Realtime Sync Supabase (Perubahan di HP langsung terlihat di Laptop)
+            if (supabase) {
+                supabase.channel('public:tasks')
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, async () => {
+                        await loadTasksFromSupabase();
+                        renderContent(true);
+                    })
+                    .subscribe();
+            }
         }
 
         function toggleTheme() { document.body.classList.toggle('dark-mode'); }
@@ -842,7 +915,6 @@
                     </div>
                 `;
 
-                // Kalkulasi Persentase Murni untuk Kekebalan Zoom
                 const leftPercent = ((task.startWeek - 1) / totalWeeksOfYear) * 100;
                 const widthPercent = ((task.endWeek - task.startWeek + 1) / totalWeeksOfYear) * 100;
                 
@@ -874,13 +946,11 @@
 
         function insertTaskAt(index) {
             if (viewerMode) return;
-            const newId = tasks.length > 0 ? Math.max(...tasks.map(t => t.id)) + 1 : 1;
             let inheritLevel = 0;
             if (index > 0 && tasks[index - 1]) {
                 inheritLevel = tasks[index - 1].level;
             }
             tasks.splice(index, 0, { 
-                id: newId, 
                 name: "pekerjaan baru", 
                 level: inheritLevel, 
                 startWeek: currentSystemWeek, 
@@ -924,10 +994,18 @@
             closeModal();
         }
 
-        function deleteTask(index) {
+        async function deleteTask(index) {
             if (viewerMode) return;
             const range = getSubtreeRange(index);
-            tasks.splice(range.start, range.count);
+            const deletedTasks = tasks.splice(range.start, range.count);
+            
+            if (supabase) {
+                const deletedIds = deletedTasks.map(t => t.id).filter(id => id);
+                if (deletedIds.length > 0) {
+                    await supabase.from('tasks').delete().in('id', deletedIds);
+                }
+            }
+
             sanitizeHierarchy();
             renderContent();
         }
