@@ -3,7 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>1 year / zen minimalist</title>
+    <title>Zen Gantt Chart - Todoist Expand Collapse</title>
+
+    <!-- Favicon & Mobile Homescreen Icons -->
+    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/tomoxyo157/custom-gantt-app/4ba018d3eba024c6c4e1aefe1f007789ba037e6f/white.png">
+    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/tomoxyo157/custom-gantt-app/4ba018d3eba024c6c4e1aefe1f007789ba037e6f/black.png">
+
+    <!-- PWA Web App Manifest -->
+    <link rel="manifest" href='data:application/manifest+json,{"name":"Zen Gantt Chart","short_name":"ZenGantt","start_url":".","display":"standalone","background_color":"#141413","theme_color":"#141413","icons":[{"src":"https://raw.githubusercontent.com/tomoxyo157/custom-gantt-app/4ba018d3eba024c6c4e1aefe1f007789ba037e6f/black.png","sizes":"192x192","type":"image/png"}]}'>
 
     <!-- EB Garamond Font -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -11,26 +18,18 @@
     <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
 
     <style>
-        * {
-            box-sizing: border-box;
-            font-family: 'EB Garamond', serif !important;
-            text-transform: lowercase !important;
-            margin: 0;
-            padding: 0;
-            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, opacity 0.3s ease, transform 0.3s ease;
-        }
-
         :root {
             --bg-color: #f4f1ea;
-            --card-bg: #fbfbf9;
-            --border-color: #e3ded4;
-            --text-color: #232220;
-            --muted-color: #8c867b;
-            --accent-color: #4a453e;
-            --line-color: rgba(227, 222, 212, 0.5);
-            --sidebar-width: 340px;
-            --row-height: 22px; /* Sangat rapat & muat banyak */
+            --card-bg: #ffffff;
+            --border-color: #d8d3c8;
+            --text-color: #1a1918;
+            --muted-color: #6b665e;
+            --accent-color: #38342f;
+            --line-color: rgba(216, 211, 200, 0.6);
+            --sidebar-width: 320px;
+            --row-height: 28px;
             --shadow-md: 0 8px 24px rgba(0,0,0,0.06);
+            --red-line: #e63946;
         }
 
         body.dark-mode {
@@ -38,20 +37,20 @@
             --card-bg: #1c1c1a;
             --border-color: #2a2a27;
             --text-color: #e3ded8;
-            --muted-color: #737068;
+            --muted-color: #8c877d;
             --accent-color: #b5b0a4;
             --line-color: rgba(42, 42, 39, 0.6);
-            --shadow-md: 0 8px 24px rgba(0,0,0,0.5);
+            --shadow-md: 0 8px 24px rgba(0,0,0,0.4);
+            --red-line: #ff4d4d;
         }
 
-        /* Grainy Abstract Overlay */
-        body::before {
-            content: "";
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.035'/%3E%3C/svg%3E");
-            pointer-events: none;
-            z-index: 999;
+        * {
+            box-sizing: border-box;
+            font-family: 'EB Garamond', serif !important;
+            text-transform: lowercase !important;
+            margin: 0;
+            padding: 0;
+            transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
         }
 
         body {
@@ -61,26 +60,66 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            padding: 40px 60px;
+            padding: 24px 36px;
         }
 
+        /* Overlay PIN Lock */
+        .pin-overlay {
+            position: fixed;
+            inset: 0;
+            background: var(--bg-color);
+            z-index: 99999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 16px;
+            opacity: 1;
+            transition: opacity 0.3s ease;
+        }
+        .pin-card {
+            background: var(--card-bg);
+            padding: 32px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-md);
+            text-align: center;
+            width: 280px;
+        }
+        .pin-card h2 { font-size: 1.1rem; margin-bottom: 6px; font-weight: 500; }
+        .pin-card p { font-size: 0.75rem; color: var(--muted-color); margin-bottom: 16px; }
+        .pin-input {
+            width: 100%;
+            padding: 8px;
+            text-align: center;
+            font-size: 1.2rem;
+            letter-spacing: 6px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-color);
+            color: var(--text-color);
+            border-radius: 6px;
+            outline: none;
+            margin-bottom: 14px;
+        }
+
+        /* Header Bar */
         header {
             background: var(--card-bg);
-            padding: 10px 20px;
+            padding: 8px 18px;
             border: 1px solid var(--border-color);
             border-bottom: none;
-            border-radius: 12px 12px 0 0;
+            border-radius: 10px 10px 0 0;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
-
-        h1 { font-size: 0.9rem; font-weight: 500; color: var(--text-color); letter-spacing: 0.5px; }
+        .header-title { font-size: 0.95rem; font-weight: 500; letter-spacing: 0.5px; }
+        .header-controls { display: flex; align-items: center; gap: 14px; }
 
         .theme-switch {
             position: relative;
-            width: 28px;
-            height: 14px;
+            width: 32px;
+            height: 16px;
             background: var(--card-bg);
             border: 1px solid var(--border-color);
             border-radius: 20px;
@@ -89,151 +128,392 @@
             align-items: center;
             padding: 1px;
         }
-
         .theme-switch-handle {
-            width: 10px;
-            height: 10px;
+            width: 12px;
+            height: 12px;
             background: var(--text-color);
             border-radius: 50%;
             transform: translateX(0);
-            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
+        body.dark-mode .theme-switch-handle { transform: translateX(14px); }
 
-        body.dark-mode .theme-switch-handle {
-            transform: translateX(14px);
+        .btn-header {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            cursor: pointer;
         }
+        .btn-header:hover { background: var(--border-color); }
 
+        /* Main Container */
         .gantt-wrapper {
             display: flex;
             background: var(--card-bg);
             border: 1px solid var(--border-color);
             flex: 1;
-            border-radius: 0 0 12px 12px;
+            border-radius: 0 0 10px 10px;
             box-shadow: var(--shadow-md);
             overflow: hidden;
+            position: relative;
         }
 
-        .gantt-container { display: flex; flex: 1; overflow: hidden; user-select: none; }
+        .sidebar-resizer {
+            width: 5px;
+            background: transparent;
+            cursor: col-resize;
+            z-index: 20;
+            position: relative;
+            transition: background 0.2s;
+        }
+        .sidebar-resizer:hover, .sidebar-resizer.resizing { background: var(--border-color); }
 
-        /* Sidebar Panel */
-        .gantt-sidebar { width: var(--sidebar-width); background: var(--card-bg); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; z-index: 10; position: relative; }
-        .sidebar-header { height: 45px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; padding: 0 16px; }
-        .sidebar-body { flex: 1; overflow-y: auto; position: relative; padding: 4px 0; scrollbar-width: none; }
+        .gantt-sidebar {
+            width: var(--sidebar-width);
+            min-width: 200px;
+            max-width: 500px;
+            background: var(--card-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+        }
+
+        .sidebar-header {
+            height: 48px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            padding: 0 14px;
+        }
+
+        .sidebar-body {
+            flex: 1;
+            overflow-y: auto;
+            position: relative;
+            scrollbar-width: none;
+        }
         .sidebar-body::-webkit-scrollbar { display: none; }
 
+        .empty-tasks-notice {
+            padding: 20px;
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--muted-color);
+        }
+
+        /* Task Row & Drag States */
         .task-row-container { position: relative; }
-        
-        .insert-trigger { height: 4px; position: absolute; left: 0; right: 0; z-index: 5; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-        .insert-trigger.top { top: -2px; }
-        .insert-trigger.bottom { bottom: -2px; }
-        .insert-line { width: 100%; height: 1px; background: var(--accent-color); opacity: 0; transition: opacity 0.2s; position: relative; }
-        .insert-trigger:hover .insert-line { opacity: 0.4; }
-        .plus-btn { position: absolute; background: var(--text-color); color: var(--bg-color); border: none; width: 12px; height: 12px; border-radius: 50%; font-size: 0.55rem; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: opacity 0.2s; top: -6px; left: 50%; transform: translateX(-50%); }
+
+        /* Insert Trigger (Hover Button + Line) */
+        .insert-trigger {
+            height: 6px;
+            position: absolute;
+            left: 0;
+            right: 0;
+            z-index: 15;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .insert-trigger.top { top: -3px; }
+        .insert-trigger.bottom { bottom: -3px; }
+        .insert-line {
+            width: 100%;
+            height: 1px;
+            background: var(--accent-color);
+            opacity: 0;
+            transition: opacity 0.2s;
+            position: relative;
+        }
+        .insert-trigger:hover .insert-line { opacity: 0.6; }
+        .plus-btn {
+            position: absolute;
+            background: var(--text-color);
+            color: var(--bg-color);
+            border: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            font-size: 0.65rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s;
+            top: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
         .insert-trigger:hover .plus-btn { opacity: 1; }
 
-        .task-row { height: var(--row-height); display: flex; align-items: center; border-bottom: 1px solid var(--border-color); padding-right: 8px; background: var(--card-bg); transition: background 0.15s; }
-        .task-row.drag-over { background: var(--border-color); border-bottom: 1px dashed var(--accent-color); }
-
-        /* 6 dots digeser agak ke kanan agar ada jarak dari tepian window/page */
-        .task-content-inner { display: flex; align-items: center; width: 100%; gap: 5px; position: relative; z-index: 2; padding-left: 10px; }
+        .task-row {
+            height: var(--row-height);
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-right: 6px;
+            background: var(--card-bg);
+            position: relative;
+            user-select: none;
+        }
         
-        .drag-handle { cursor: grab; color: var(--muted-color); font-size: 0.75rem; padding: 0 2px; opacity: 0.4; }
+        /* Drag Indicators */
+        .task-row.drag-over-top { border-top: 2px solid var(--accent-color) !important; }
+        .task-row.drag-over-bottom { border-bottom: 2px solid var(--accent-color) !important; }
+        .task-row.drag-over-child { background: var(--border-color) !important; opacity: 0.85; }
+
+        .task-content-inner {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            gap: 6px;
+            position: relative;
+            z-index: 2;
+            padding-left: 6px;
+        }
+        
+        .drag-handle {
+            cursor: grab;
+            color: var(--muted-color);
+            font-size: 0.9rem;
+            padding: 0 2px;
+            opacity: 0.5;
+            letter-spacing: -1px;
+        }
         .drag-handle:hover { opacity: 1; }
         .drag-handle:active { cursor: grabbing; }
 
-        .task-name-text { flex: 1; font-size: 0.7rem; color: var(--text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 1px 3px; border-radius: 3px; outline: none; }
+        /* Expand / Collapse Toggle Styling */
+        .toggle-btn {
+            font-size: 0.55rem;
+            cursor: pointer;
+            color: var(--muted-color);
+            width: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            transition: color 0.2s ease;
+        }
+        .toggle-btn:hover { color: var(--text-color); }
+        .toggle-btn-placeholder { width: 12px; display: inline-block; }
+
+        .task-name-text {
+            flex: 1;
+            font-size: 0.75rem;
+            color: var(--text-color);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding: 1px 4px;
+            border-radius: 3px;
+            outline: none;
+        }
         .task-name-text:focus { background: var(--bg-color); border: 1px solid var(--border-color); }
         
-        .task-actions { display: flex; gap: 3px; opacity: 0; transition: opacity 0.2s; }
+        .task-actions { display: flex; gap: 4px; opacity: 0; transition: opacity 0.2s; }
         .task-row:hover .task-actions { opacity: 1; }
-        .action-btn { background: none; border: none; padding: 1px 3px; border-radius: 3px; font-size: 0.55rem; cursor: pointer; color: var(--muted-color); }
+        .action-btn {
+            background: none;
+            border: none;
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-size: 0.65rem;
+            cursor: pointer;
+            color: var(--muted-color);
+        }
         .action-btn:hover { background: var(--border-color); color: var(--text-color); }
         .action-btn.del:hover { color: #ff3b30; }
 
-        /* Timeline Panel */
-        .gantt-timeline { flex: 1; overflow-x: auto; overflow-y: auto; background: var(--card-bg); position: relative; scrollbar-width: none; }
+        /* Timeline View Area */
+        .gantt-timeline {
+            flex: 1;
+            overflow-x: auto;
+            overflow-y: auto;
+            background: var(--card-bg);
+            position: relative;
+            scrollbar-width: none;
+        }
         .gantt-timeline::-webkit-scrollbar { display: none; }
         
-        .timeline-grid-header { display: flex; flex-direction: column; }
+        .timeline-grid-header { display: flex; flex-direction: column; position: sticky; top: 0; z-index: 8; background: var(--card-bg); }
         
         .years-row { display: flex; height: 18px; border-bottom: 1px solid var(--border-color); background: var(--bg-color); }
         .year-cell { display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 600; color: var(--text-color); border-right: 1px solid var(--border-color); }
 
-        .months-row, .weeks-row { display: flex; height: 16px; border-bottom: 1px solid var(--border-color); }
+        .months-row, .weeks-row { display: flex; height: 15px; border-bottom: 1px solid var(--border-color); }
         .month-cell { border-right: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; font-size: 0.6rem; color: var(--muted-color); }
-        .week-cell { width: 22px; min-width: 22px; border-right: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; font-size: 0.5rem; color: var(--muted-color); opacity: 0.6; }
+        .week-cell { width: 22px; min-width: 22px; border-right: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; font-size: 0.5rem; color: var(--muted-color); opacity: 0.7; }
+        .week-cell.current { font-weight: bold; color: var(--red-line); opacity: 1; }
 
         .timeline-rows-container { position: relative; }
         .timeline-row-lane { height: var(--row-height); border-bottom: 1px solid var(--border-color); position: relative; display: flex; align-items: center; }
 
         .grid-bg-line { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line-color); pointer-events: none; }
 
-        /* Timeline Bar & Handles */
-        .task-bar { position: absolute; height: 12px; background: var(--text-color); border-radius: 2px; display: flex; align-items: center; color: var(--bg-color); font-size: 0.5rem; }
-        .task-bar.parent { background: var(--muted-color); font-weight: 600; }
+        /* Task Bars & Handles */
+        .task-bar {
+            position: absolute;
+            height: 14px;
+            background: var(--text-color);
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            color: var(--bg-color);
+            font-size: 0.55rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .task-bar.parent {
+            background: var(--muted-color);
+            font-weight: 600;
+        }
         
-        .bar-content { flex: 1; padding: 0 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: move; }
-        .task-bar.parent .bar-content { cursor: default; }
+        .bar-content { flex: 1; padding: 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: move; }
 
-        .resizer { width: 5px; height: 100%; position: absolute; top: 0; cursor: col-resize; z-index: 2; opacity: 0; transition: opacity 0.2s; }
-        .task-bar:hover .resizer { opacity: 1; background: rgba(255,255,255,0.25); }
-        .resizer.left { left: 0; border-radius: 2px 0 0 2px; }
-        .resizer.right { right: 0; border-radius: 0 2px 2px 0; }
+        .resizer { width: 6px; height: 100%; position: absolute; top: 0; cursor: col-resize; z-index: 2; opacity: 0; transition: opacity 0.2s; }
+        .task-bar:hover .resizer { opacity: 1; background: rgba(255,255,255,0.3); }
+        .resizer.left { left: 0; border-radius: 3px 0 0 3px; }
+        .resizer.right { right: 0; border-radius: 0 3px 3px 0; }
         
-        .current-week-line { position: absolute; top: 0; bottom: 0; width: 1px; background: #ff3b30; z-index: 5; pointer-events: none; }
+        .current-week-line {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--red-line);
+            z-index: 7;
+            pointer-events: none;
+        }
 
-        /* Zen Animated Modal */
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.35); backdrop-filter: blur(2px); display: none; align-items: center; justify-content: center; z-index: 10000; opacity: 0; transition: opacity 0.25s ease; }
-        .modal-overlay.active { display: flex; opacity: 1; }
-        .modal-card { background: var(--card-bg); padding: 16px; border-radius: 10px; width: 300px; border: 1px solid var(--border-color); box-shadow: var(--shadow-md); transform: scale(0.95); transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        /* Modal Animated Styling */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(2px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal-card {
+            background: var(--card-bg);
+            padding: 18px;
+            border-radius: 8px;
+            width: 320px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-md);
+            transform: scale(0.92);
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
         .modal-overlay.active .modal-card { transform: scale(1); }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; }
-        .modal-title { font-size: 0.75rem; font-weight: 600; color: var(--text-color); }
-        .btn-close { background: none; border: none; font-size: 0.9rem; color: var(--muted-color); cursor: pointer; }
-        .modal textarea { width: 100%; height: 70px; padding: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); border-radius: 5px; resize: none; margin-bottom: 10px; outline: none; font-size: 0.7rem; }
-        .modal-actions { display: flex; justify-content: flex-end; gap: 5px; }
-        .btn { background: var(--text-color); color: var(--bg-color); border: none; padding: 3px 8px; border-radius: 5px; cursor: pointer; font-size: 0.65rem; }
+        
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; }
+        .modal-title { font-size: 0.8rem; font-weight: 600; color: var(--text-color); }
+        .btn-close { background: none; border: none; font-size: 1rem; color: var(--muted-color); cursor: pointer; }
+        
+        /* Fixed Textarea */
+        .modal textarea {
+            width: 100%;
+            height: 110px;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-color);
+            color: var(--text-color);
+            border-radius: 6px;
+            resize: none !important;
+            margin-bottom: 14px;
+            outline: none;
+            font-size: 0.75rem;
+            line-height: 1.4;
+            box-sizing: border-box;
+            display: block;
+            overflow-y: auto;
+        }
+        .modal textarea::-webkit-resizer { display: none !important; }
+        .modal textarea:focus { border-color: var(--accent-color); }
+        
+        .modal-actions { display: flex; justify-content: flex-end; gap: 6px; }
+        .btn { background: var(--text-color); color: var(--bg-color); border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.7rem; }
         .btn-secondary { background: transparent; color: var(--muted-color); border: 1px solid var(--border-color); }
         .btn-secondary:hover { color: var(--text-color); background: var(--border-color); }
+
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            :root { --sidebar-width: 200px; }
+            .task-actions { display: flex !important; opacity: 1 !important; }
+            .sidebar-resizer { display: none; }
+            .resizer { display: none !important; }
+            .bar-content { cursor: default; }
+        }
     </style>
 </head>
 <body class="dark-mode">
 
-    <header>
-        <h1>1 year</h1>
-        <div class="theme-switch" onclick="toggleTheme()" title="toggle theme">
-            <div class="theme-switch-handle" id="switchHandle"></div>
-        </div>
-    </header>
-
-    <div class="gantt-wrapper">
-        <div class="gantt-container">
-            <!-- Sidebar Kiri Tanpa Garis Vertikal -->
-            <div class="gantt-sidebar" id="sidebarContainer">
-                <div class="sidebar-header"></div>
-                <div class="sidebar-body" id="sidebarBody"></div>
-            </div>
-
-            <!-- Timeline Kanan -->
-            <div class="gantt-timeline" id="timelineContainer">
-                <div class="timeline-grid-header" id="timelineGridHeader">
-                    <div class="years-row" id="yearsRow"></div>
-                    <div class="months-row" id="monthsRow"></div>
-                    <div class="weeks-row" id="weeksRow"></div>
-                </div>
-                <div class="timeline-rows-container" id="timelineRowsContainer"></div>
+    <!-- Screen PIN Authentication Overlay -->
+    <div class="pin-overlay" id="pinOverlay">
+        <div class="pin-card">
+            <h2>masukkan pin</h2>
+            <p>akses rahasia gantt chart lokal</p>
+            <input type="password" id="pinInput" class="pin-input" maxlength="6" autofocus placeholder="••••">
+            <div style="display: flex; gap: 6px; justify-content: center;">
+                <button class="btn" onclick="checkPin()">masuk</button>
             </div>
         </div>
     </div>
 
-    <!-- Modal Zen Notes -->
+    <!-- Main Application Header -->
+    <header>
+        <div class="header-title">1 year / zen gantt</div>
+        <div class="header-controls">
+            <button class="btn-header" onclick="logout()">logout</button>
+            <div class="theme-switch" onclick="toggleTheme()" title="toggle theme">
+                <div class="theme-switch-handle" id="switchHandle"></div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Gantt Chart Main Area -->
+    <div class="gantt-wrapper">
+        <div class="gantt-sidebar" id="sidebarContainer">
+            <!-- Sidebar Header tanpa teks -->
+            <div class="sidebar-header"></div>
+            <div class="sidebar-body" id="sidebarBody"></div>
+        </div>
+
+        <div class="sidebar-resizer" id="sidebarResizer"></div>
+
+        <div class="gantt-timeline" id="timelineContainer">
+            <div class="timeline-grid-header" id="timelineGridHeader">
+                <div class="years-row" id="yearsRow"></div>
+                <div class="months-row" id="monthsRow"></div>
+                <div class="weeks-row" id="weeksRow"></div>
+            </div>
+            <div class="timeline-rows-container" id="timelineRowsContainer"></div>
+        </div>
+    </div>
+
+    <!-- Modal Catatan -->
     <div class="modal-overlay" id="notesModal" onclick="closeModalOnOverlay(event)">
         <div class="modal-card">
             <div class="modal-header">
-                <span class="modal-title" id="modalTitle">catatan</span>
+                <span class="modal-title" id="modalTitle">catatan pekerjaan</span>
                 <button class="btn-close" onclick="closeModal()">×</button>
             </div>
-            <textarea id="modalTextarea" placeholder="tulis catatan..."></textarea>
+            <textarea id="modalTextarea" placeholder="tulis rincian dan deskripsi di sini..."></textarea>
             <div class="modal-actions">
                 <button class="btn btn-secondary" onclick="closeModal()">batal</button>
                 <button class="btn" onclick="saveNotes()">simpan</button>
@@ -242,21 +522,78 @@
     </div>
 
     <script>
-        let timelineConfig = {
-            startYear: 2026,
-            yearsCount: 1
-        };
-
-        let tasks = [
-            { id: 1, name: "perencanaan strategis", level: 0, startWeek: 1, endWeek: 4, notes: "kick-off awal tahun." },
-            { id: 2, name: "riset pasar & target", level: 1, startWeek: 1, endWeek: 2, notes: "" },
-            { id: 3, name: "pengembangan inti sistem", level: 0, startWeek: 5, endWeek: 20, notes: "" }
-        ];
-
+        let timelineConfig = { startYear: 2026, yearsCount: 1 };
         const weekWidth = 22; 
         let draggedTaskIndex = null;
         let currentEditingIndex = null;
-        let activeBar = null, actionType = null, startMouseX = 0, initialStartWeek = 0, initialEndWeek = 0;
+        let activeBar = null, actionType = null, startMouseX = 0;
+        let childrenInitialStates = [];
+
+        function getCurrentWeekOfYear() {
+            const now = new Date();
+            const startOfYear = new Date(now.getFullYear(), 0, 1);
+            const pastDays = (now - startOfYear) / 86400000;
+            return Math.ceil((pastDays + startOfYear.getDay() + 1) / 7);
+        }
+        const currentSystemWeek = Math.min(Math.max(getCurrentWeekOfYear(), 1), 52);
+
+        let tasks = JSON.parse(localStorage.getItem('zen_gantt_tasks')) || [
+            { id: 1, name: "A. perencanaan strategis", level: 0, startWeek: currentSystemWeek, endWeek: currentSystemWeek + 3, notes: "induk utama", collapsed: false },
+            { id: 2, name: "A1. riset pasar & target", level: 1, startWeek: currentSystemWeek, endWeek: currentSystemWeek + 1, notes: "anak dari A", collapsed: false },
+            { id: 3, name: "A1a. sebar kuesioner", level: 2, startWeek: currentSystemWeek, endWeek: currentSystemWeek + 1, notes: "cucu dari A", collapsed: false },
+            { id: 4, name: "A1b. olah data spss", level: 2, startWeek: currentSystemWeek + 1, endWeek: currentSystemWeek + 2, notes: "cucu dari A", collapsed: false },
+            { id: 5, name: "A2. penyusunan anggaran", level: 1, startWeek: currentSystemWeek + 2, endWeek: currentSystemWeek + 3, notes: "anak dari A", collapsed: false },
+            { id: 6, name: "B. sistem backend inti", level: 0, startWeek: currentSystemWeek + 4, endWeek: currentSystemWeek + 8, notes: "induk kedua", collapsed: false }
+        ];
+
+        function saveTasksToStorage() {
+            localStorage.setItem('zen_gantt_tasks', JSON.stringify(tasks));
+        }
+
+        function checkPin() {
+            const inputVal = document.getElementById('pinInput').value;
+            if (inputVal === "1234") {
+                sessionStorage.setItem('zen_gantt_auth', 'true');
+                document.getElementById('pinOverlay').style.opacity = '0';
+                setTimeout(() => { document.getElementById('pinOverlay').style.display = 'none'; }, 300);
+            } else {
+                alert("PIN salah! (Gunakan: 1234)");
+                document.getElementById('pinInput').value = '';
+            }
+        }
+
+        function logout() {
+            sessionStorage.removeItem('zen_gantt_auth');
+            document.getElementById('pinInput').value = '';
+            document.getElementById('pinOverlay').style.display = 'flex';
+            setTimeout(() => { document.getElementById('pinOverlay').style.opacity = '1'; }, 10);
+        }
+
+        window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+        document.getElementById('pinInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') checkPin(); });
+
+        const resizer = document.getElementById('sidebarResizer');
+        let isResizingSidebar = false;
+
+        resizer.addEventListener('mousedown', (e) => {
+            isResizingSidebar = true;
+            resizer.classList.add('resizing');
+            document.addEventListener('mousemove', handleSidebarResize);
+            document.addEventListener('mouseup', stopSidebarResize);
+        });
+
+        function handleSidebarResize(e) {
+            if (!isResizingSidebar) return;
+            const newWidth = Math.max(180, Math.min(e.clientX - 36, 500));
+            document.documentElement.style.setProperty('--sidebar-width', newWidth + 'px');
+        }
+
+        function stopSidebarResize() {
+            isResizingSidebar = false;
+            resizer.classList.remove('resizing');
+            document.removeEventListener('mousemove', handleSidebarResize);
+            document.removeEventListener('mouseup', stopSidebarResize);
+        }
 
         function getWeeksInYear(year) {
             const d = new Date(year, 11, 31);
@@ -264,20 +601,24 @@
         }
 
         function initGantt() {
+            if (sessionStorage.getItem('zen_gantt_auth') === 'true') {
+                document.getElementById('pinOverlay').style.display = 'none';
+            }
             renderHeader();
             renderContent();
-            document.getElementById('timelineContainer').scrollLeft = (32 - 4) * weekWidth;
+            
+            setTimeout(() => {
+                const container = document.getElementById('timelineContainer');
+                const redLinePos = (currentSystemWeek - 1) * weekWidth;
+                container.scrollLeft = redLinePos - (container.clientWidth / 2) + (weekWidth / 2);
+            }, 100);
         }
 
-        function toggleTheme() {
-            document.body.classList.toggle('dark-mode');
-        }
+        function toggleTheme() { document.body.classList.toggle('dark-mode'); }
 
         function renderHeader() {
             let totalWeeks = 0;
-            let yearsHTML = '';
-            let monthHTML = '';
-            let weekHTML = '';
+            let yearsHTML = '', monthHTML = '', weekHTML = '';
 
             for (let y = 0; y < timelineConfig.yearsCount; y++) {
                 const yr = timelineConfig.startYear + y;
@@ -298,7 +639,8 @@
             }
 
             for (let i = 1; i <= totalWeeks; i++) {
-                weekHTML += `<div class="week-cell">${i}</div>`;
+                const isCurr = i === currentSystemWeek;
+                weekHTML += `<div class="week-cell ${isCurr ? 'current' : ''}">${i}</div>`;
             }
 
             const totalWidth = totalWeeks * weekWidth;
@@ -310,30 +652,96 @@
             document.getElementById('weeksRow').innerHTML = weekHTML;
         }
 
-        function renderContent() {
-            updateParentTimelines();
+        // --- ALGORITMA TREE & VISIBILITAS (COLLAPSE/EXPAND) --- //
+
+        function getSubtreeRange(index) {
+            let parentLevel = tasks[index].level;
+            let end = index;
+            while (end + 1 < tasks.length && tasks[end + 1].level > parentLevel) {
+                end++;
+            }
+            return { start: index, end: end, count: end - index + 1 };
+        }
+
+        function sanitizeHierarchy() {
+            if (tasks.length === 0) return;
+            tasks[0].level = 0; 
+            for (let i = 1; i < tasks.length; i++) {
+                const maxAllowed = tasks[i - 1].level + 1;
+                if (tasks[i].level > maxAllowed) {
+                    tasks[i].level = maxAllowed;
+                }
+            }
+        }
+
+        // Memeriksa apakah task harus disembunyikan karena induknya di-collapse
+        function isTaskVisible(index) {
+            let currentLevel = tasks[index].level;
+            for (let i = index - 1; i >= 0; i--) {
+                if (tasks[i].level < currentLevel) {
+                    if (tasks[i].collapsed) {
+                        return false;
+                    }
+                    currentLevel = tasks[i].level;
+                }
+            }
+            return true;
+        }
+
+        function toggleCollapse(index, e) {
+            e.stopPropagation();
+            tasks[index].collapsed = !tasks[index].collapsed;
+            saveTasksToStorage();
+            renderContent();
+        }
+
+        function renderContent(skipAutoUpdate = false) {
+            if (!skipAutoUpdate) {
+                updateParentTimelines();
+            }
+            saveTasksToStorage();
+
             const sidebar = document.getElementById('sidebarBody');
             const timeline = document.getElementById('timelineRowsContainer');
             
+            if (tasks.length === 0) {
+                sidebar.innerHTML = `<div class="empty-tasks-notice">belum ada pekerjaan.<br><br><button class="btn" onclick="insertTaskAt(0)">+ tambah task pertama</button></div>`;
+                timeline.innerHTML = '';
+                return;
+            }
+
             let sidebarHTML = '';
             let timelineHTML = '';
 
             tasks.forEach((task, index) => {
+                // Sembunyikan item jika ada induk di atasnya yang di-collapse
+                if (!isTaskVisible(index)) return;
+
                 const indent = Math.min(task.level, 6) * 14;
                 const isPar = isParent(index);
+
+                // Fitur Toggle Expand & Collapse menggantikan indikator level
+                const toggleIconHTML = isPar 
+                    ? `<span class="toggle-btn" onclick="toggleCollapse(${index}, event)" title="${task.collapsed ? 'buka anak' : 'tutup anak'}">${task.collapsed ? '▶' : '▼'}</span>`
+                    : `<span class="toggle-btn-placeholder"></span>`;
 
                 sidebarHTML += `
                     <div class="task-row-container">
                         <div class="insert-trigger top" onclick="insertTaskAt(${index})">
                             <div class="insert-line"><button class="plus-btn">+</button></div>
                         </div>
-                        <div class="task-row" draggable="true" ondragstart="dragStart(event, ${index})" ondragover="dragOver(event)" ondrop="drop(event, ${index})" ondragleave="dragLeave(event)">
-                            <div class="task-content-inner" style="padding-left: ${10 + indent}px;">
-                                <span class="drag-handle" title="geser hierarki / posisi">⠿</span>
+                        <div class="task-row" draggable="true" 
+                             ondragstart="dragStart(event, ${index})" 
+                             ondragover="dragOver(event, ${index})" 
+                             ondrop="drop(event, ${index})" 
+                             ondragleave="dragLeave(event)">
+                            <div class="task-content-inner" style="padding-left: ${8 + indent}px;">
+                                <span class="drag-handle" title="drag atas/bawah & kiri/kanan">⠿</span>
+                                ${toggleIconHTML}
                                 <span class="task-name-text" contenteditable="true" onblur="updateTaskNameInline(${index}, this.innerText)">${task.name}</span>
                                 <div class="task-actions">
                                     <button class="action-btn" onclick="openNotes(${index})" title="catatan">catatan</button>
-                                    <button class="action-btn del" onclick="deleteTask(${index})" title="hapus">hapus</button>
+                                    <button class="action-btn del" onclick="deleteTask(${index})" title="hapus">✕</button>
                                 </div>
                             </div>
                         </div>
@@ -346,8 +754,9 @@
 
                 const leftPos = (task.startWeek - 1) * weekWidth;
                 const widthBar = Math.max(1, (task.endWeek - task.startWeek + 1)) * weekWidth;
+                
                 let handles = !isPar ? `<div class="resizer left" onmousedown="initAction(event, ${index}, 'resize-left')"></div><div class="resizer right" onmousedown="initAction(event, ${index}, 'resize-right')"></div>` : '';
-                let moveEvent = !isPar ? `onmousedown="initAction(event, ${index}, 'move')"` : '';
+                let moveEvent = `onmousedown="initAction(event, ${index}, 'move')"`;
 
                 let totalWeeks = getWeeksInYear(timelineConfig.startYear);
                 let gridLines = '';
@@ -366,7 +775,7 @@
                 `;
             });
 
-            timelineHTML += `<div class="current-week-line" style="left: ${(31 - 1) * weekWidth}px;"></div>`;
+            timelineHTML += `<div class="current-week-line" style="left: ${(currentSystemWeek - 1) * weekWidth}px;"></div>`;
             
             sidebar.innerHTML = sidebarHTML;
             timeline.innerHTML = timelineHTML;
@@ -374,13 +783,27 @@
 
         function insertTaskAt(index) {
             const newId = tasks.length > 0 ? Math.max(...tasks.map(t => t.id)) + 1 : 1;
-            tasks.splice(index, 0, { id: newId, name: "tugas baru", level: 0, startWeek: 1, endWeek: 4, notes: "" });
+            let inheritLevel = 0;
+            if (index > 0 && tasks[index - 1]) {
+                inheritLevel = tasks[index - 1].level;
+            }
+            tasks.splice(index, 0, { 
+                id: newId, 
+                name: "pekerjaan baru", 
+                level: inheritLevel, 
+                startWeek: currentSystemWeek, 
+                endWeek: Math.min(currentSystemWeek + 2, 52), 
+                notes: "",
+                collapsed: false
+            });
+            sanitizeHierarchy();
             renderContent();
         }
 
         function updateTaskNameInline(index, newName) {
             if (newName.trim() !== "") {
                 tasks[index].name = newName.trim();
+                saveTasksToStorage();
                 const bars = document.querySelectorAll('.bar-content');
                 if (bars[index]) bars[index].innerText = newName.trim();
             }
@@ -398,60 +821,127 @@
             currentEditingIndex = null;
         }
 
-        function closeModalOnOverlay(e) {
-            if (e.target.id === 'notesModal') closeModal();
-        }
+        function closeModalOnOverlay(e) { if (e.target.id === 'notesModal') closeModal(); }
 
         function saveNotes() {
             if (currentEditingIndex !== null) {
                 tasks[currentEditingIndex].notes = document.getElementById('modalTextarea').value;
+                saveTasksToStorage();
             }
             closeModal();
         }
 
         function deleteTask(index) {
-            tasks.splice(index, 1);
+            const range = getSubtreeRange(index);
+            tasks.splice(range.start, range.count);
+            sanitizeHierarchy();
             renderContent();
         }
 
-        function dragStart(e, index) { draggedTaskIndex = index; e.dataTransfer.effectAllowed = 'move'; }
-        function dragOver(e) { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
-        function dragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
+        // --- ALGORITMA DRAG & DROP TODOIST WITH SMART POSITIONING --- //
+
+        function dragStart(e, index) { 
+            draggedTaskIndex = index; 
+            e.dataTransfer.effectAllowed = 'move'; 
+        }
+
+        function dragOver(e, targetIndex) {
+            e.preventDefault();
+            const row = e.currentTarget;
+            const rect = row.getBoundingClientRect();
+            const relY = e.clientY - rect.top;
+
+            row.classList.remove('drag-over-top', 'drag-over-bottom', 'drag-over-child');
+
+            if (relY < rect.height * 0.33) {
+                row.classList.add('drag-over-top');
+            } else if (relY < rect.height * 0.66) {
+                row.classList.add('drag-over-child');
+            } else {
+                row.classList.add('drag-over-bottom');
+            }
+        }
+
+        function dragLeave(e) {
+            e.currentTarget.classList.remove('drag-over-top', 'drag-over-bottom', 'drag-over-child');
+        }
         
         function drop(e, targetIndex) {
             e.preventDefault();
-            e.currentTarget.classList.remove('drag-over');
+            const row = e.currentTarget;
+            row.classList.remove('drag-over-top', 'drag-over-bottom', 'drag-over-child');
+            
             if (draggedTaskIndex === null) return;
 
-            const sidebarEl = document.getElementById('sidebarContainer');
-            const sidebarRect = sidebarEl.getBoundingClientRect();
-            
-            let relativeX = e.clientX - sidebarRect.left;
-            let targetLevel = Math.floor(relativeX / 14);
-            
-            if (targetIndex > 0) {
-                let checkIdx = targetIndex > draggedTaskIndex ? targetIndex : targetIndex - 1;
-                let maxAllowedLevel = tasks[checkIdx].level + 1;
-                targetLevel = Math.min(targetLevel, maxAllowedLevel);
-            } else {
-                targetLevel = 0;
-            }
-            
-            targetLevel = Math.max(0, Math.min(targetLevel, 6));
+            const draggedRange = getSubtreeRange(draggedTaskIndex);
 
-            const task = tasks.splice(draggedTaskIndex, 1)[0];
-            task.level = targetLevel;
-            tasks.splice(targetIndex, 0, task);
+            if (targetIndex >= draggedRange.start && targetIndex <= draggedRange.end) return;
+
+            const draggedBlock = tasks.splice(draggedRange.start, draggedRange.count);
+
+            let adjustedTarget = targetIndex;
+            if (draggedTaskIndex < targetIndex) {
+                adjustedTarget -= draggedRange.count;
+            }
+
+            const rect = row.getBoundingClientRect();
+            const relY = e.clientY - rect.top;
+            const relX = e.clientX - rect.left;
+
+            let insertAt = adjustedTarget;
+            let targetTask = tasks[adjustedTarget];
+
+            if (relY < rect.height * 0.33) {
+                insertAt = adjustedTarget;
+            } else if (relY < rect.height * 0.66) {
+                insertAt = adjustedTarget + 1;
+            } else {
+                const targetSubtree = getSubtreeRange(adjustedTarget);
+                insertAt = targetSubtree.end + 1;
+            }
+
+            const maxAllowedLevel = insertAt > 0 ? tasks[insertAt - 1].level + 1 : 0;
+            const mouseLevelCalculated = Math.max(0, Math.floor(Math.max(0, relX) / 14));
+
+            let newParentLevel = Math.min(mouseLevelCalculated, maxAllowedLevel);
             
+            if (relY >= rect.height * 0.33 && relY <= rect.height * 0.66 && targetTask) {
+                newParentLevel = Math.min(targetTask.level + 1, maxAllowedLevel);
+            }
+
+            const levelDelta = newParentLevel - draggedBlock[0].level;
+
+            draggedBlock.forEach(t => {
+                t.level = Math.max(0, t.level + levelDelta);
+            });
+
+            tasks.splice(insertAt, 0, ...draggedBlock);
+
+            sanitizeHierarchy();
             renderContent();
             draggedTaskIndex = null;
         }
 
+        // --- MANAJEMEN TIMELINE & DRAG DURATION --- //
+
         function initAction(e, index, action) {
             e.preventDefault();
-            activeBar = index; actionType = action; startMouseX = e.clientX;
-            initialStartWeek = tasks[index].startWeek; initialEndWeek = tasks[index].endWeek;
+            activeBar = index; 
+            actionType = action; 
+            startMouseX = e.clientX;
             
+            const childIndices = getSubtaskIndicesList(index);
+            const groupIndices = [index, ...childIndices];
+            
+            childrenInitialStates = [];
+            groupIndices.forEach(gi => {
+                childrenInitialStates.push({
+                    idx: gi,
+                    startWeek: tasks[gi].startWeek,
+                    endWeek: tasks[gi].endWeek
+                });
+            });
+
             document.addEventListener('mousemove', handleMouseMove);
             document.addEventListener('mouseup', stopAction);
         }
@@ -459,31 +949,54 @@
         function handleMouseMove(e) {
             if (activeBar === null) return;
             const weekShift = Math.round((e.clientX - startMouseX) / weekWidth);
-            let task = tasks[activeBar];
             const maxWeeks = getWeeksInYear(timelineConfig.startYear);
 
+            const parentInitial = childrenInitialStates.find(s => s.idx === activeBar);
+            if (!parentInitial) return;
+
+            const dur = parentInitial.endWeek - parentInitial.startWeek;
+            let ns = parentInitial.startWeek + weekShift;
+            if (ns < 1) ns = 1; 
+            if (ns + dur > maxWeeks) ns = maxWeeks - dur;
+            
+            const actualShift = ns - parentInitial.startWeek;
+
             if (actionType === 'move') {
-                const dur = initialEndWeek - initialStartWeek;
-                let ns = initialStartWeek + weekShift;
-                if (ns < 1) ns = 1; if (ns + dur > maxWeeks) ns = maxWeeks - dur;
-                task.startWeek = ns; task.endWeek = ns + dur;
+                childrenInitialStates.forEach(state => {
+                    let taskObj = tasks[state.idx];
+                    let taskDur = state.endWeek - state.startWeek;
+                    let newStart = state.startWeek + actualShift;
+                    
+                    if (newStart < 1) newStart = 1;
+                    if (newStart + taskDur > maxWeeks) newStart = maxWeeks - taskDur;
+                    
+                    taskObj.startWeek = newStart;
+                    taskObj.endWeek = newStart + taskDur;
+                });
             } else if (actionType === 'resize-left') {
-                let ns = initialStartWeek + weekShift;
-                if (ns < 1) ns = 1; if (ns > task.endWeek) ns = task.endWeek;
+                let task = tasks[activeBar];
+                let ns = parentInitial.startWeek + weekShift;
+                if (ns < 1) ns = 1; 
+                if (ns > task.endWeek) ns = task.endWeek;
                 task.startWeek = ns;
             } else if (actionType === 'resize-right') {
-                let ne = initialEndWeek + weekShift;
-                if (ne > maxWeeks) ne = maxWeeks; if (ne < task.startWeek) ne = task.startWeek;
+                let task = tasks[activeBar];
+                let ne = parentInitial.endWeek + weekShift;
+                if (ne > maxWeeks) ne = maxWeeks; 
+                if (ne < task.startWeek) ne = task.startWeek;
                 task.endWeek = ne;
             }
-            renderContent();
+            
+            renderContent(true);
         }
 
         function stopAction() { 
             activeBar = null; 
             actionType = null; 
+            childrenInitialStates = [];
             document.removeEventListener('mousemove', handleMouseMove); 
             document.removeEventListener('mouseup', stopAction); 
+            renderContent(); 
         }
 
         function isParent(index) {
@@ -491,11 +1004,27 @@
             return tasks[index + 1].level > tasks[index].level;
         }
 
+        function getSubtaskIndicesList(parentIndex) {
+            let indices = [];
+            let parentLevel = tasks[parentIndex].level;
+            for (let i = parentIndex + 1; i < tasks.length; i++) {
+                if (tasks[i].level > parentLevel) {
+                    indices.push(i);
+                } else {
+                    break;
+                }
+            }
+            return indices;
+        }
+
         function updateParentTimelines() {
             for (let i = 0; i < tasks.length; i++) {
                 let curLvl = tasks[i].level;
                 let children = [], j = i + 1;
-                while (j < tasks.length && tasks[j].level > curLvl) { children.push(tasks[j]); j++; }
+                while (j < tasks.length && tasks[j].level > curLvl) { 
+                    children.push(tasks[j]); 
+                    j++; 
+                }
                 if (children.length > 0) {
                     tasks[i].startWeek = Math.min(...children.map(c => c.startWeek));
                     tasks[i].endWeek = Math.max(...children.map(c => c.endWeek));
