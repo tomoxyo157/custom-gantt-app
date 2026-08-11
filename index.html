@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zen Gantt Chart - Adaptive PWA</title>
+    <title>Zen Gantt Chart - Dynamic Hybrid Engine</title>
 
     <!-- Favicon & Mobile Homescreen Icons -->
     <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/tomoxyo157/custom-gantt-app/4ba018d3eba024c6c4e1aefe1f007789ba037e6f/white.png">
@@ -29,10 +29,14 @@
             --muted-color: #6b665e;
             --accent-color: #38342f;
             --line-color: rgba(216, 211, 200, 0.6);
-            --sidebar-width: 340px;
-            --row-height: 34px;
+            --sidebar-width: 380px;
+            --row-height: 38px;
             --shadow-md: 0 8px 24px rgba(0,0,0,0.06);
             --red-line: #e63946;
+            --conflict-color: #dc2626;
+            --conflict-bg: rgba(220, 38, 38, 0.1);
+            --auto-badge: #059669;
+            --manual-badge: #0284c7;
         }
 
         body.dark-mode {
@@ -45,6 +49,10 @@
             --line-color: rgba(42, 42, 39, 0.6);
             --shadow-md: 0 8px 24px rgba(0,0,0,0.4);
             --red-line: #ff4d4d;
+            --conflict-color: #ef4444;
+            --conflict-bg: rgba(239, 68, 68, 0.18);
+            --auto-badge: #10b981;
+            --manual-badge: #38bdf8;
         }
 
         * {
@@ -63,8 +71,8 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            padding: 16px 24px;
-            font-size: 16px;
+            padding: 12px 18px;
+            font-size: 15px;
         }
 
         /* Overlay PIN Lock */
@@ -109,16 +117,18 @@
         /* Header Bar */
         header {
             background: var(--card-bg);
-            padding: 12px 20px;
+            padding: 10px 18px;
             border: 1px solid var(--border-color);
             border-bottom: none;
             border-radius: 10px 10px 0 0;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
         }
-        .header-title { font-size: 1.1rem; font-weight: 500; letter-spacing: 0.5px; }
-        .header-controls { display: flex; align-items: center; gap: 10px; }
+        .header-title { font-size: 1.05rem; font-weight: 500; letter-spacing: 0.5px; }
+        .header-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
         .theme-switch {
             position: relative;
@@ -146,13 +156,32 @@
             background: transparent;
             border: 1px solid var(--border-color);
             color: var(--text-color);
-            padding: 4px 12px;
+            padding: 4px 10px;
             border-radius: 4px;
-            font-size: 0.85rem;
+            font-size: 0.82rem;
             cursor: pointer;
         }
         .btn-header:hover { background: var(--border-color); }
         .btn-header.active-mode { background: var(--text-color); color: var(--bg-color); border-color: var(--text-color); }
+
+        .year-selector-group {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 2px 6px;
+            background: var(--bg-color);
+        }
+        .year-input {
+            width: 55px;
+            background: transparent;
+            border: none;
+            color: var(--text-color);
+            font-size: 0.85rem;
+            text-align: center;
+            outline: none;
+        }
 
         /* Main Container */
         .gantt-wrapper {
@@ -178,8 +207,8 @@
 
         .gantt-sidebar {
             width: var(--sidebar-width);
-            min-width: 200px;
-            max-width: 600px;
+            min-width: 260px;
+            max-width: 650px;
             background: var(--card-bg);
             border-right: 1px solid var(--border-color);
             display: flex;
@@ -192,8 +221,12 @@
             border-bottom: 1px solid var(--border-color);
             display: flex;
             align-items: center;
-            padding: 0 14px;
+            padding: 0 12px;
             flex-shrink: 0;
+            font-size: 0.8rem;
+            color: var(--muted-color);
+            font-weight: 600;
+            background: var(--bg-color);
         }
 
         .sidebar-body {
@@ -267,6 +300,10 @@
             position: relative;
             user-select: none;
         }
+
+        .task-row.has-conflict {
+            background-color: var(--conflict-bg);
+        }
         
         .task-row.drag-over-top { border-top: 2px solid var(--accent-color) !important; }
         .task-row.drag-over-bottom { border-bottom: 2px solid var(--accent-color) !important; }
@@ -276,7 +313,7 @@
             display: flex;
             align-items: center;
             width: 100%;
-            gap: 8px;
+            gap: 6px;
             position: relative;
             z-index: 2;
             padding-left: 6px;
@@ -285,7 +322,7 @@
         .drag-handle {
             cursor: grab;
             color: var(--muted-color);
-            font-size: 1rem;
+            font-size: 0.9rem;
             padding: 0 2px;
             opacity: 0.5;
         }
@@ -293,10 +330,10 @@
         .drag-handle:active { cursor: grabbing; }
 
         .toggle-btn {
-            font-size: 0.7rem;
+            font-size: 0.68rem;
             cursor: pointer;
             color: var(--muted-color);
-            width: 14px;
+            width: 12px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -304,16 +341,16 @@
             transition: color 0.2s ease;
         }
         .toggle-btn:hover { color: var(--text-color); }
-        .toggle-btn-placeholder { width: 14px; display: inline-block; }
+        .toggle-btn-placeholder { width: 12px; display: inline-block; }
 
         .task-name-text {
             flex: 1;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             color: var(--text-color);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            padding: 2px 6px;
+            padding: 2px 4px;
             border-radius: 3px;
             outline: none;
         }
@@ -325,15 +362,43 @@
             opacity: 0.7;
         }
 
-        .task-actions { display: flex; gap: 4px; opacity: 0; transition: opacity 0.2s; }
+        /* Hybrid Engine Mode & Conflict Badges */
+        .mode-badge {
+            font-size: 0.65rem;
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-weight: 600;
+            cursor: pointer;
+            text-transform: uppercase !important;
+            user-select: none;
+            border: 1px solid transparent;
+        }
+        .mode-badge.auto { color: var(--auto-badge); border-color: var(--auto-badge); background: transparent; }
+        .mode-badge.manual { color: var(--manual-badge); border-color: var(--manual-badge); background: transparent; }
+        .conflict-tag {
+            font-size: 0.62rem;
+            color: var(--conflict-color);
+            border: 1px solid var(--conflict-color);
+            padding: 1px 4px;
+            border-radius: 3px;
+            font-weight: 700;
+            animation: pulseWarning 2s infinite;
+        }
+
+        @keyframes pulseWarning {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .task-actions { display: flex; gap: 4px; opacity: 0; transition: opacity 0.2s; align-items: center; }
         .task-row:hover .task-actions, body.viewer-mode-active .task-row .task-actions { opacity: 1; }
         
         .action-btn {
             background: none;
             border: none;
-            padding: 2px 6px;
+            padding: 2px 5px;
             border-radius: 3px;
-            font-size: 0.8rem;
+            font-size: 0.78rem;
             cursor: pointer;
             color: var(--muted-color);
         }
@@ -379,7 +444,7 @@
 
         .grid-bg-line { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line-color); pointer-events: none; }
 
-        /* Task Bars */
+        /* Task Bars & Ghost Overrun Indicators */
         .task-bar {
             position: absolute;
             height: 18px;
@@ -388,16 +453,33 @@
             display: flex;
             align-items: center;
             color: var(--bg-color);
-            font-size: 0.7rem;
+            font-size: 0.68rem;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             min-width: 6px;
+            z-index: 3;
         }
         .task-bar.parent { background: var(--muted-color); font-weight: 600; }
         .task-bar.completed-bar { opacity: 0.4; background: var(--muted-color) !important; }
         
+        .task-bar.conflict-bar {
+            border: 1px dashed var(--conflict-color) !important;
+            background-image: repeating-linear-gradient(45deg, rgba(220, 38, 38, 0.15), rgba(220, 38, 38, 0.15) 8px, transparent 8px, transparent 16px) !important;
+        }
+
+        .ghost-actual-bar {
+            position: absolute;
+            height: 10px;
+            top: 24px;
+            border: 1px dashed var(--conflict-color);
+            background: rgba(220, 38, 38, 0.2);
+            border-radius: 2px;
+            z-index: 2;
+            pointer-events: none;
+        }
+
         .bar-content { flex: 1; padding: 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: move; }
 
-        .resizer { width: 6px; height: 100%; position: absolute; top: 0; cursor: col-resize; z-index: 2; opacity: 0; transition: opacity 0.2s; }
+        .resizer { width: 6px; height: 100%; position: absolute; top: 0; cursor: col-resize; z-index: 4; opacity: 0; transition: opacity 0.2s; }
         .task-bar:hover .resizer { opacity: 1; background: rgba(255,255,255,0.3); }
         .resizer.left { left: 0; border-radius: 3px 0 0 3px; }
         .resizer.right { right: 0; border-radius: 0 3px 3px 0; }
@@ -469,7 +551,7 @@
         /* Mobile Styling */
         @media (max-width: 768px) {
             body { padding: 8px; }
-            :root { --sidebar-width: 210px; }
+            :root { --sidebar-width: 240px; }
             .task-actions { display: flex !important; opacity: 1 !important; }
             .resizer { display: none !important; }
             .bar-content { cursor: default; }
@@ -491,10 +573,17 @@
         </div>
     </div>
 
-    <!-- Main Header -->
+    <!-- Main Header Bar with Dynamic Year Switcher Controls -->
     <header>
-        <div class="header-title" id="headerTitle">1 year / zen gantt</div>
+        <div class="header-title" id="headerTitle">1 year / zen gantt engine</div>
         <div class="header-controls">
+            <!-- Year Switcher On-Demand -->
+            <div class="year-selector-group">
+                <button class="btn-header" onclick="navigateYear(-1)">◄</button>
+                <input type="number" id="yearPicker" class="year-input" min="2020" max="2100" value="2026" onchange="setYear(parseInt(this.value))">
+                <button class="btn-header" onclick="navigateYear(1)">►</button>
+            </div>
+            <button class="btn-header" onclick="rollbackToYear(2020)">rollback 2020</button>
             <button class="btn-header" id="viewModeBtn" onclick="toggleViewMode()">view: 1 year</button>
             <button class="btn-header" id="viewerModeBtn" onclick="toggleViewerMode()">viewer mode: off</button>
             <button class="btn-header" onclick="logout()">logout</button>
@@ -507,7 +596,10 @@
     <!-- Main Gantt Area -->
     <div class="gantt-wrapper">
         <div class="gantt-sidebar" id="sidebarContainer">
-            <div class="sidebar-header"></div>
+            <div class="sidebar-header">
+                <span style="flex:1;">struktur pekerjaan</span>
+                <span style="margin-right:8px;">mode</span>
+            </div>
             <div class="sidebar-body" id="sidebarBody"></div>
         </div>
 
@@ -557,6 +649,8 @@
             dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         }
 
+        // State Global Aplikasi
+        let selectedYear = 2026;
         let viewMode = '1year'; // '1year' atau '5year'
         let draggedTaskIndex = null;
         let currentEditingIndex = null;
@@ -564,7 +658,7 @@
         let childrenInitialStates = [];
         let viewerMode = false;
 
-        // Date Helpers
+        // Date Helper Functions
         function formatDateISO(d) {
             const year = d.getFullYear();
             const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -578,10 +672,15 @@
             return formatDateISO(d);
         }
 
-        // Generate 52 Minggu riil untuk 2026 (Senin ke Senin)
-        function get2026Weeks() {
+        // Calculation Weeks On-Demand for any selected year
+        function getYearWeeks(year) {
             const weeks = [];
-            let currentMonday = new Date(2026, 0, 5); // Senin pertama 2026 = 5 Jan
+            // Pick first Monday of January
+            let currentMonday = new Date(year, 0, 1);
+            while (currentMonday.getDay() !== 1) {
+                currentMonday.setDate(currentMonday.getDate() + 1);
+            }
+
             for (let i = 0; i < 52; i++) {
                 const start = new Date(currentMonday);
                 const end = new Date(currentMonday);
@@ -593,7 +692,7 @@
                     endDate: new Date(end),
                     startDateStr: formatDateISO(start),
                     endDateStr: formatDateISO(end),
-                    dayLabel: start.getDate().toString(), // format "d" tanpa leading 0
+                    dayLabel: start.getDate().toString(),
                     monthIndex: start.getMonth()
                 });
                 currentMonday.setDate(currentMonday.getDate() + 7);
@@ -601,30 +700,42 @@
             return weeks;
         }
 
-        const weeks2026 = get2026Weeks();
-
-        function weekNumberToDates(wStart, wEnd) {
+        function weekNumberToDates(wStart, wEnd, year = selectedYear) {
+            const weeks = getYearWeeks(year);
             const sIdx = Math.max(1, Math.min(wStart, 52)) - 1;
             const eIdx = Math.max(1, Math.min(wEnd, 52)) - 1;
             return {
-                startDate: weeks2026[sIdx].startDateStr,
-                endDate: weeks2026[eIdx].endDateStr
+                startDate: weeks[sIdx].startDateStr,
+                endDate: weeks[eIdx].endDateStr
             };
         }
 
-        // Data Bawaan Awal (Fallback)
+        // Raw Default Task Data dengan Mode Hybrid (AUTO vs MANUAL)
         let defaultRawTasks = [
-            { id: 1, name: "A. perencanaan strategis", level: 0, startWeek: 1, endWeek: 4, notes: "induk utama", collapsed: false, completed: false },
-            { id: 2, name: "A1. riset pasar & target", level: 1, startWeek: 1, endWeek: 2, notes: "anak dari A", collapsed: false, completed: false },
-            { id: 3, name: "A1a. sebar kuesioner", level: 2, startWeek: 1, endWeek: 2, notes: "cucu dari A", collapsed: false, completed: false },
-            { id: 4, name: "A1b. olah data spss", level: 2, startWeek: 2, endWeek: 3, notes: "cucu dari A", collapsed: false, completed: false },
-            { id: 5, name: "A2. penyusunan anggaran", level: 1, startWeek: 3, endWeek: 4, notes: "anak dari A", collapsed: false, completed: false },
-            { id: 6, name: "B. sistem backend inti", level: 0, startWeek: 5, endWeek: 9, notes: "induk kedua", collapsed: false, completed: false }
+            { id: 1, name: "A. perencanaan strategis", level: 0, mode: 'AUTO', targetStart: "2026-01-05", targetEnd: "2026-01-30", notes: "induk utama (bottom-up auto)", collapsed: false, completed: false },
+            { id: 2, name: "A1. riset pasar & target", level: 1, mode: 'MANUAL', targetStart: "2026-01-05", targetEnd: "2026-01-18", notes: "sub task A1", collapsed: false, completed: false },
+            { id: 3, name: "A1a. sebar kuesioner", level: 2, mode: 'MANUAL', targetStart: "2026-01-05", targetEnd: "2026-01-18", notes: "detail kuesioner", collapsed: false, completed: false },
+            { id: 4, name: "A1b. olah data spss", level: 2, mode: 'MANUAL', targetStart: "2026-01-12", targetEnd: "2026-01-25", notes: "spss analytics", collapsed: false, completed: false },
+            { id: 5, name: "A2. penyusunan anggaran", level: 1, mode: 'MANUAL', targetStart: "2026-01-19", targetEnd: "2026-01-30", notes: "budgeting team", collapsed: false, completed: false },
+            { id: 6, name: "B. sistem backend (top-down locked)", level: 0, mode: 'MANUAL', targetStart: "2026-02-02", targetEnd: "2026-03-01", notes: "target dikunci dari atas", collapsed: false, completed: false },
+            { id: 7, name: "B1. arsitektur database & api", level: 1, mode: 'MANUAL', targetStart: "2026-02-02", targetEnd: "2026-03-22", notes: "melebihi target induk -> pemicu konflik!", collapsed: false, completed: false }
         ];
 
-        let tasks = JSON.parse(localStorage.getItem('zen_gantt_tasks_v2')) || defaultRawTasks.map(t => {
-            const d = weekNumberToDates(t.startWeek, t.endWeek);
-            return { ...t, startDate: d.startDate, endDate: d.endDate };
+        let tasks = JSON.parse(localStorage.getItem('zen_gantt_tasks_v3')) || defaultRawTasks.map(t => {
+            return {
+                id: t.id,
+                name: t.name,
+                level: t.level,
+                mode: t.mode || 'MANUAL',
+                startDate: t.targetStart,
+                endDate: t.targetEnd,
+                calculatedStart: null,
+                calculatedEnd: null,
+                hasConflict: false,
+                notes: t.notes || "",
+                collapsed: t.collapsed || false,
+                completed: t.completed || false
+            };
         });
 
         // Memuat Data dari Supabase
@@ -641,7 +752,7 @@
                         let sDate = t.start_date;
                         let eDate = t.end_date;
                         if (!sDate && t.start_week) {
-                            const converted = weekNumberToDates(t.start_week, t.end_week || t.start_week);
+                            const converted = weekNumberToDates(t.start_week, t.end_week || t.start_week, selectedYear);
                             sDate = converted.startDate;
                             eDate = converted.endDate;
                         }
@@ -649,14 +760,18 @@
                             id: t.id,
                             name: t.name,
                             level: t.level,
-                            startDate: sDate || "2026-01-05",
-                            endDate: eDate || "2026-01-25",
+                            mode: t.mode || 'MANUAL',
+                            startDate: sDate || `${selectedYear}-01-05`,
+                            endDate: eDate || `${selectedYear}-01-25`,
+                            calculatedStart: null,
+                            calculatedEnd: null,
+                            hasConflict: false,
                             notes: t.notes || "",
                             collapsed: t.collapsed || false,
                             completed: t.completed || false
                         };
                     });
-                    localStorage.setItem('zen_gantt_tasks_v2', JSON.stringify(tasks));
+                    localStorage.setItem('zen_gantt_tasks_v3', JSON.stringify(tasks));
                 }
             } catch (e) {
                 console.error("Gagal load dari Supabase:", e);
@@ -665,7 +780,7 @@
 
         // Menyimpan Data ke Supabase & LocalStorage
         async function saveTasksToStorage() {
-            localStorage.setItem('zen_gantt_tasks_v2', JSON.stringify(tasks));
+            localStorage.setItem('zen_gantt_tasks_v3', JSON.stringify(tasks));
             if (!dbClient) return;
 
             try {
@@ -673,6 +788,7 @@
                     const row = {
                         name: t.name,
                         level: t.level,
+                        mode: t.mode || 'MANUAL',
                         start_date: t.startDate,
                         end_date: t.endDate,
                         notes: t.notes || "",
@@ -704,7 +820,62 @@
             }
         }
 
-        // Otentikasi & PIN
+        /* ==========================================================================
+           HYBRID RECURSIVE ENGINE (TOP-DOWN & BOTTOM-UP ALGORITHM)
+           ========================================================================== */
+        function processHybridTimelineEngine() {
+            if (tasks.length === 0) return;
+
+            // Iterate bottom-up from last element to top to aggregate parent tasks accurately
+            for (let i = tasks.length - 1; i >= 0; i--) {
+                const curLevel = tasks[i].level;
+                const childIndices = getSubtaskIndicesList(i);
+
+                if (childIndices.length > 0) {
+                    // Collect dates of immediate and direct children
+                    let minStart = null;
+                    let maxEnd = null;
+
+                    childIndices.forEach(childIdx => {
+                        const c = tasks[childIdx];
+                        const cStart = c.startDate;
+                        const cEnd = c.endDate;
+
+                        if (!minStart || cStart < minStart) minStart = cStart;
+                        if (!maxEnd || cEnd > maxEnd) maxEnd = cEnd;
+                    });
+
+                    tasks[i].calculatedStart = minStart;
+                    tasks[i].calculatedEnd = maxEnd;
+
+                    if (tasks[i].mode === 'AUTO') {
+                        // BOTTOM-UP MODE: Parent timeline dates dynamically adopt child range
+                        if (minStart && maxEnd) {
+                            tasks[i].startDate = minStart;
+                            tasks[i].endDate = maxEnd;
+                        }
+                        tasks[i].hasConflict = false;
+                    } else {
+                        // TOP-DOWN MODE: Parent dates are locked manually. Check for Overrun / Variance Conflict
+                        if (minStart && maxEnd) {
+                            if (minStart < tasks[i].startDate || maxEnd > tasks[i].endDate) {
+                                tasks[i].hasConflict = true;
+                            } else {
+                                tasks[i].hasConflict = false;
+                            }
+                        } else {
+                            tasks[i].hasConflict = false;
+                        }
+                    }
+                } else {
+                    tasks[i].calculatedStart = tasks[i].startDate;
+                    tasks[i].calculatedEnd = tasks[i].endDate;
+                    tasks[i].hasConflict = false;
+                }
+            }
+        }
+
+        // Otentikasi & PIN Lock
         function checkPin() {
             const inputEl = document.getElementById('pinInput');
             const overlayEl = document.getElementById('pinOverlay');
@@ -732,6 +903,29 @@
                 overlayEl.style.display = 'flex';
                 setTimeout(() => { overlayEl.style.opacity = '1'; }, 10);
             }
+        }
+
+        // Navigation Switcher & Year Rollback Controls
+        function setYear(year) {
+            if (isNaN(year) || year < 2020 || year > 2100) return;
+            selectedYear = year;
+            document.getElementById('yearPicker').value = year;
+            renderHeader();
+            renderContent(true);
+        }
+
+        function navigateYear(delta) {
+            setYear(selectedYear + delta);
+        }
+
+        function rollbackToYear(year) {
+            setYear(year);
+        }
+
+        function toggleTaskMode(index) {
+            if (viewerMode) return;
+            tasks[index].mode = tasks[index].mode === 'AUTO' ? 'MANUAL' : 'AUTO';
+            renderContent();
         }
 
         window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
@@ -764,10 +958,10 @@
             const titleEl = document.getElementById('headerTitle');
             if (viewMode === '5year') {
                 btn.innerText = "view: 5 years";
-                titleEl.innerText = "5 years / zen gantt";
+                titleEl.innerText = "5 years / zen gantt engine";
             } else {
                 btn.innerText = "view: 1 year";
-                titleEl.innerText = "1 year / zen gantt";
+                titleEl.innerText = "1 year / zen gantt engine";
             }
             renderHeader();
             renderContent(true);
@@ -798,7 +992,7 @@
 
         function handleSidebarResize(e) {
             if (!isResizingSidebar) return;
-            const newWidth = Math.max(180, Math.min(e.clientX - 24, 600));
+            const newWidth = Math.max(220, Math.min(e.clientX - 18, 650));
             document.documentElement.style.setProperty('--sidebar-width', newWidth + 'px');
             renderHeader();
             renderContent(true);
@@ -816,7 +1010,7 @@
             renderContent(true);
         });
 
-        // Sync Scroll
+        // Sync Scroll Viewports
         const sidebarBody = document.getElementById('sidebarBody');
         const timelineContainer = document.getElementById('timelineContainer');
         let isSyncingSidebar = false;
@@ -870,11 +1064,12 @@
 
             if (viewMode === '1year') {
                 weeksRow.style.display = 'flex';
-                yearsRow.innerHTML = `<div class="year-cell">2026</div>`;
+                yearsRow.innerHTML = `<div class="year-cell">${selectedYear}</div>`;
 
                 const monthNames = ["jan", "feb", "mar", "apr", "mei", "jun", "jul", "ags", "sep", "okt", "nov", "des"];
+                const weeks = getYearWeeks(selectedYear);
                 const monthCounts = new Array(12).fill(0);
-                weeks2026.forEach(w => monthCounts[w.monthIndex]++);
+                weeks.forEach(w => monthCounts[w.monthIndex]++);
 
                 let monthHTML = '';
                 monthCounts.forEach((cnt, idx) => {
@@ -888,7 +1083,7 @@
                 let weekHTML = '';
                 const weekPercent = (1 / 52) * 100;
 
-                weeks2026.forEach(w => {
+                weeks.forEach(w => {
                     const isCurr = (todayISO >= w.startDateStr && todayISO <= w.endDateStr);
                     weekHTML += `<div class="week-cell ${isCurr ? 'current' : ''}" style="width: ${weekPercent}%;" title="minggu ${w.index}: ${w.startDateStr} s/d ${w.endDateStr}">${w.dayLabel}</div>`;
                 });
@@ -897,13 +1092,13 @@
                 weeksRow.innerHTML = weekHTML;
 
             } else {
-                // 5-Year View (2026 - 2030)
+                // 5-Year Multi-Year View
                 weeksRow.style.display = 'none';
                 let yearsHTML = '';
                 let quarterHTML = '';
                 
                 for (let y = 0; y < 5; y++) {
-                    const yr = 2026 + y;
+                    const yr = selectedYear + y;
                     yearsHTML += `<div class="year-cell" style="width: 20%;">${yr}</div>`;
                     for (let q = 1; q <= 4; q++) {
                         quarterHTML += `<div class="month-cell" style="width: 5%;">q${q}</div>`;
@@ -978,11 +1173,12 @@
         function getTaskPosition(sDateStr, eDateStr) {
             let tStart, tEnd;
             if (viewMode === '1year') {
-                tStart = new Date('2026-01-05T00:00:00');
-                tEnd = new Date('2027-01-03T23:59:59');
+                const yearWeeks = getYearWeeks(selectedYear);
+                tStart = new Date(yearWeeks[0].startDateStr + 'T00:00:00');
+                tEnd = new Date(yearWeeks[51].endDateStr + 'T23:59:59');
             } else {
-                tStart = new Date('2026-01-01T00:00:00');
-                tEnd = new Date('2030-12-31T23:59:59');
+                tStart = new Date(`${selectedYear}-01-01T00:00:00`);
+                tEnd = new Date(`${selectedYear + 4}-12-31T23:59:59`);
             }
 
             const totalMs = tEnd - tStart;
@@ -999,10 +1195,9 @@
             return { leftPercent: left, widthPercent: width };
         }
 
+        /* Render Core UI (Sidebar Tree & Timeline Canvas) */
         function renderContent(skipAutoUpdate = false) {
-            if (!skipAutoUpdate) {
-                updateParentTimelines();
-            }
+            processHybridTimelineEngine();
             saveTasksToStorage();
 
             const sidebar = document.getElementById('sidebarBody');
@@ -1035,14 +1230,24 @@
                         <div class="insert-line"><button class="plus-btn">+</button></div>
                     </div>`;
 
+                const modeBadgeHTML = isPar 
+                    ? `<span class="mode-badge ${task.mode.toLowerCase()}" onclick="toggleTaskMode(${index})" title="Klik untuk ganti Top-Down vs Bottom-Up">${task.mode}</span>`
+                    : `<span style="font-size:0.65rem; color:var(--muted-color);">—</span>`;
+
+                const conflictBadgeHTML = task.hasConflict 
+                    ? `<span class="conflict-tag" title="Child melebihi target induk!">KONFLIK</span>`
+                    : '';
+
                 sidebarHTML += `
                     <div class="task-row-container">
                         ${addTriggerHTML}
-                        <div class="task-row ${task.completed ? 'completed' : ''}" ${dragAttrs}>
+                        <div class="task-row ${task.hasConflict ? 'has-conflict' : ''} ${task.completed ? 'completed' : ''}" ${dragAttrs}>
                             <div class="task-content-inner" style="padding-left: ${6 + indent}px;">
                                 <span class="drag-handle" style="${handleDisplay}" title="drag task">⠿</span>
                                 ${toggleIconHTML}
                                 <span class="task-name-text" ${editableAttr}>${task.name}</span>
+                                ${modeBadgeHTML}
+                                ${conflictBadgeHTML}
                                 <div class="task-actions">
                                     <button class="action-btn check ${task.completed ? 'active' : ''}" onclick="toggleCompleteTask(${index}, event)" title="centang/coret task">✓</button>
                                     <button class="action-btn" onclick="openNotes(${index})" title="catatan">catatan</button>
@@ -1059,8 +1264,8 @@
 
                 const pos = getTaskPosition(task.startDate, task.endDate);
                 
-                let handles = (!isPar && !viewerMode) ? `<div class="resizer left" onmousedown="initAction(event, ${index}, 'resize-left')"></div><div class="resizer right" onmousedown="initAction(event, ${index}, 'resize-right')"></div>` : '';
-                let moveEvent = (!isPar && !viewerMode) ? `onmousedown="initAction(event, ${index}, 'move')"` : '';
+                let handles = (!isPar && !viewerMode) || (isPar && task.mode === 'MANUAL' && !viewerMode) ? `<div class="resizer left" onmousedown="initAction(event, ${index}, 'resize-left')"></div><div class="resizer right" onmousedown="initAction(event, ${index}, 'resize-right')"></div>` : '';
+                let moveEvent = (!isPar && !viewerMode) || (isPar && task.mode === 'MANUAL' && !viewerMode) ? `onmousedown="initAction(event, ${index}, 'move')"` : '';
 
                 let gridLines = '';
                 const lineCount = (viewMode === '1year') ? 52 : 20;
@@ -1068,10 +1273,18 @@
                     gridLines += `<div class="grid-bg-line" style="left: ${(l / lineCount) * 100}%;"></div>`;
                 }
 
+                // Render Overrun / Conflict Ghost Bar Indicator for Top-Down Locked Parents
+                let ghostBarHTML = '';
+                if (isPar && task.mode === 'MANUAL' && task.calculatedStart && task.calculatedEnd) {
+                    const posActual = getTaskPosition(task.calculatedStart, task.calculatedEnd);
+                    ghostBarHTML = `<div class="ghost-actual-bar" style="left: ${posActual.leftPercent}%; width: ${posActual.widthPercent}%;" title="Rentang Child Riil: ${task.calculatedStart} s/d ${task.calculatedEnd}"></div>`;
+                }
+
                 timelineHTML += `
                     <div class="timeline-row-lane">
                         ${gridLines}
-                        <div class="task-bar ${isPar ? 'parent' : ''} ${task.completed ? 'completed-bar' : ''}" style="left: ${pos.leftPercent}%; width: ${pos.widthPercent}%;" title="${task.name} (${task.startDate} s/d ${task.endDate})">
+                        ${ghostBarHTML}
+                        <div class="task-bar ${isPar ? 'parent' : ''} ${task.hasConflict ? 'conflict-bar' : ''} ${task.completed ? 'completed-bar' : ''}" style="left: ${pos.leftPercent}%; width: ${pos.widthPercent}%;" title="${task.name} (${task.startDate} s/d ${task.endDate})">
                             ${handles}
                             <div class="bar-content" ${moveEvent}>${task.name}</div>
                         </div>
@@ -1079,7 +1292,7 @@
                 `;
             });
 
-            // Red Line Indikator Hari Ini
+            // Red Line Indicator Dynamic Today
             const todayStr = formatDateISO(new Date());
             const posToday = getTaskPosition(todayStr, todayStr);
             if (posToday.leftPercent >= 0 && posToday.leftPercent <= 100) {
@@ -1101,8 +1314,12 @@
             tasks.splice(index, 0, { 
                 name: "pekerjaan baru", 
                 level: inheritLevel, 
+                mode: 'MANUAL',
                 startDate: todayStr,
                 endDate: addDays(todayStr, 14),
+                calculatedStart: null,
+                calculatedEnd: null,
+                hasConflict: false,
                 notes: "",
                 collapsed: false,
                 completed: false
@@ -1279,7 +1496,7 @@
             } else {
                 const pxPerQuarter = containerWidth / 20;
                 const quarterShift = Math.round((e.clientX - startMouseX) / pxPerQuarter);
-                daysShift = quarterShift * 91; // ~1 Kuartal
+                daysShift = quarterShift * 91;
             }
 
             const parentInitial = childrenInitialStates.find(s => s.idx === activeBar);
@@ -1329,27 +1546,6 @@
                 }
             }
             return indices;
-        }
-
-        function updateParentTimelines() {
-            for (let i = 0; i < tasks.length; i++) {
-                let curLvl = tasks[i].level;
-                let children = [], j = i + 1;
-                while (j < tasks.length && tasks[j].level > curLvl) { 
-                    children.push(tasks[j]); 
-                    j++; 
-                }
-                if (children.length > 0) {
-                    let minStart = children[0].startDate;
-                    let maxEnd = children[0].endDate;
-                    children.forEach(c => {
-                        if (c.startDate < minStart) minStart = c.startDate;
-                        if (c.endDate > maxEnd) maxEnd = c.endDate;
-                    });
-                    tasks[i].startDate = minStart;
-                    tasks[i].endDate = maxEnd;
-                }
-            }
         }
 
         window.onload = initGantt;
