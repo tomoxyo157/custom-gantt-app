@@ -61,7 +61,7 @@
             text-transform: lowercase !important;
             margin: 0;
             padding: 0;
-            transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+            transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
         }
 
         body {
@@ -655,6 +655,13 @@
         let hasPendingSave = false; // true selama edit lokal belum benar-benar tersimpan ke Supabase
 
         async function resetAppCache() {
+            // Pastikan perubahan/card yang belum sempat terkirim ke server tersimpan dulu,
+            // supaya tidak hilang saat halaman di-reload
+            if (saveTimeout || hasPendingSave) {
+                if (saveTimeout) clearTimeout(saveTimeout);
+                try { await flushSaveToSupabase(); } catch(e) { console.log(e); }
+            }
+
             if ('serviceWorker' in navigator) {
                 try {
                     const regs = await navigator.serviceWorker.getRegistrations();
@@ -758,6 +765,64 @@
             }
         }
 
+        async function flushSaveToSupabase() {
+            const statusEl = document.getElementById('saveStatus');
+            if (!dbClient) {
+                hasPendingSave = false;
+                if (statusEl) { statusEl.innerText = "saved"; statusEl.style.color = "var(--muted-color)"; }
+                return;
+            }
+
+            try {
+                const payload = tasks.map((t, idx) => {
+                    const row = {
+                        name: t.name,
+                        level: t.level,
+                        mode: t.mode || 'MANUAL',
+                        start_date: t.startDate,
+                        end_date: t.endDate,
+                        notes: t.notes || "",
+                        collapsed: t.collapsed || false,
+                        completed: t.completed || false,
+                        hidden: t.hidden || false,
+                        sort_order: idx
+                    };
+                    // Hanya masukkan id jika bukan temp id
+                    if (t.id && !String(t.id).startsWith('temp_')) {
+                        row.id = t.id;
+                    }
+                    return row;
+                });
+
+                const { data, error } = await dbClient
+                    .from('tasks')
+                    .upsert(payload, { onConflict: 'id' })
+                    .select();
+
+                if (!error && data) {
+                    data.forEach((savedItem, sIdx) => {
+                        if (tasks[sIdx] && (String(tasks[sIdx].id).startsWith('temp_') || !tasks[sIdx].id)) {
+                            tasks[sIdx].id = savedItem.id;
+                        }
+                    });
+                    localStorage.setItem('zen_gantt_tasks_v3', JSON.stringify(tasks));
+                }
+
+                if (statusEl) {
+                    statusEl.innerText = "saved";
+                    statusEl.style.color = "var(--muted-color)";
+                }
+            } catch (e) {
+                console.error("Gagal simpan ke Supabase:", e);
+                if (statusEl) {
+                    statusEl.innerText = "error saving";
+                    statusEl.style.color = "var(--red-line)";
+                }
+            } finally {
+                hasPendingSave = false;
+            }
+        }
+
         function saveTasksToStorage() {
             localStorage.setItem('zen_gantt_tasks_v3', JSON.stringify(tasks));
             
@@ -770,66 +835,11 @@
             hasPendingSave = true;
             if (saveTimeout) clearTimeout(saveTimeout);
 
-            saveTimeout = setTimeout(async () => {
-                if (!dbClient) {
-                    hasPendingSave = false;
-                    if (statusEl) { statusEl.innerText = "saved"; statusEl.style.color = "var(--muted-color)"; }
-                    return;
-                }
-
-                try {
-                    const payload = tasks.map((t, idx) => {
-                        const row = {
-                            name: t.name,
-                            level: t.level,
-                            mode: t.mode || 'MANUAL',
-                            start_date: t.startDate,
-                            end_date: t.endDate,
-                            notes: t.notes || "",
-                            collapsed: t.collapsed || false,
-                            completed: t.completed || false,
-                            hidden: t.hidden || false,
-                            sort_order: idx
-                        };
-                        // Hanya masukkan id jika bukan temp id
-                        if (t.id && !String(t.id).startsWith('temp_')) {
-                            row.id = t.id;
-                        }
-                        return row;
-                    });
-
-                    const { data, error } = await dbClient
-                        .from('tasks')
-                        .upsert(payload, { onConflict: 'id' })
-                        .select();
-
-                    if (!error && data) {
-                        data.forEach((savedItem, sIdx) => {
-                            if (tasks[sIdx] && (String(tasks[sIdx].id).startsWith('temp_') || !tasks[sIdx].id)) {
-                                tasks[sIdx].id = savedItem.id;
-                            }
-                        });
-                        localStorage.setItem('zen_gantt_tasks_v3', JSON.stringify(tasks));
-                    }
-
-                    if (statusEl) {
-                        statusEl.innerText = "saved";
-                        statusEl.style.color = "var(--muted-color)";
-                    }
-                } catch (e) {
-                    console.error("Gagal simpan ke Supabase:", e);
-                    if (statusEl) {
-                        statusEl.innerText = "error saving";
-                        statusEl.style.color = "var(--red-line)";
-                    }
-                } finally {
-                    hasPendingSave = false;
-                }
-            }, 500);
+            saveTimeout = setTimeout(flushSaveToSupabase, 500);
         }
 
         setInterval(async () => {
-            if (!isUserTyping && !hasPendingSave && dbClient) {
+            if (!isUserTyping && !hasPendingSave && !isInteractingWithUI && dbClient) {
                 const hasUnsavedLocalTasks = tasks.some(t => String(t.id).startsWith('temp_'));
                 if (!hasUnsavedLocalTasks) {
                     const prevTasksStr = JSON.stringify(tasks);
@@ -1079,6 +1089,16 @@
         const timelineContainer = document.getElementById('timelineContainer');
         let isSyncingSidebar = false;
         let isSyncingTimeline = false;
+        let isInteractingWithUI = false; // true saat pointer sedang menekan tombol di card (cegah re-render menyela klik)
+
+        sidebarBody.addEventListener('mousedown', () => {
+            isInteractingWithUI = true;
+        });
+        document.addEventListener('mouseup', () => {
+            // beri jeda kecil supaya renderContent() dari handler klik (mis. toggle/delete) tetap sempat jalan normal,
+            // tapi background sync (poll/realtime) tidak menyela tepat saat user sedang menekan tombol
+            setTimeout(() => { isInteractingWithUI = false; }, 200);
+        });
 
         sidebarBody.addEventListener('scroll', () => {
             if (!isSyncingSidebar) {
@@ -1113,7 +1133,7 @@
                 dbClient.channel('public:tasks')
                     .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, async () => {
                         const hasUnsavedLocalTasks = tasks.some(t => String(t.id).startsWith('temp_'));
-                        if (!isUserTyping && !hasPendingSave && !hasUnsavedLocalTasks) {
+                        if (!isUserTyping && !hasPendingSave && !isInteractingWithUI && !hasUnsavedLocalTasks) {
                             await loadTasksFromSupabase(false);
                             renderContent(true);
                         }
