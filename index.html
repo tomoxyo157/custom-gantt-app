@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zen Gantt Chart - Dynamic Hybrid Engine</title>
+    <title>Zen Gantt Chart</title>
 
     <!-- Favicon & Mobile Homescreen Icons -->
     <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/tomoxyo157/custom-gantt-app/4ba018d3eba024c6c4e1aefe1f007789ba037e6f/white.png">
@@ -219,13 +219,7 @@
         .sidebar-header {
             height: 54px;
             border-bottom: 1px solid var(--border-color);
-            display: flex;
-            align-items: center;
-            padding: 0 12px;
             flex-shrink: 0;
-            font-size: 0.8rem;
-            color: var(--muted-color);
-            font-weight: 600;
             background: var(--bg-color);
         }
 
@@ -409,7 +403,7 @@
         /* Timeline Area */
         .gantt-timeline {
             flex: 1;
-            overflow-x: hidden;
+            overflow-x: auto;
             overflow-y: auto;
             background: var(--card-bg);
             position: relative;
@@ -417,7 +411,7 @@
         }
         .gantt-timeline::-webkit-scrollbar { display: none; }
         
-        .timeline-grid-header { display: flex; flex-direction: column; position: sticky; top: 0; z-index: 8; background: var(--card-bg); width: 100%; height: 54px; }
+        .timeline-grid-header { display: flex; flex-direction: column; position: sticky; top: 0; z-index: 8; background: var(--card-bg); width: 100%; min-width: 100%; height: 54px; }
         
         .years-row { display: flex; height: 20px; border-bottom: 1px solid var(--border-color); background: var(--bg-color); width: 100%; }
         .year-cell { display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 600; color: var(--text-color); border-right: 1px solid var(--border-color); width: 100%; }
@@ -439,7 +433,7 @@
         .week-cell.current { font-weight: bold; color: var(--red-line); opacity: 1; }
         .week-cell:hover { background: var(--border-color); opacity: 1; z-index: 5; }
 
-        .timeline-rows-container { position: relative; width: 100%; min-height: calc(100% - 54px); }
+        .timeline-rows-container { position: relative; width: 100%; min-width: 100%; min-height: calc(100% - 54px); }
         .timeline-row-lane { height: var(--row-height); border-bottom: 1px solid var(--border-color); position: relative; display: flex; align-items: center; width: 100%; }
 
         .grid-bg-line { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line-color); pointer-events: none; }
@@ -575,15 +569,16 @@
 
     <!-- Main Header Bar with Dynamic Year Switcher Controls -->
     <header>
-        <div class="header-title" id="headerTitle">1 year / zen gantt engine</div>
+        <div class="header-title" id="headerTitle">1 year</div>
         <div class="header-controls">
-            <!-- Year Switcher On-Demand -->
+            <!-- Year Switcher On-Demand (Min 2000 untuk rentang 1 abad) -->
             <div class="year-selector-group">
                 <button class="btn-header" onclick="navigateYear(-1)">◄</button>
-                <input type="number" id="yearPicker" class="year-input" min="2020" max="2100" value="2026" onchange="setYear(parseInt(this.value))">
+                <input type="number" id="yearPicker" class="year-input" min="2000" max="2100" value="2026" onchange="setYear(parseInt(this.value))">
                 <button class="btn-header" onclick="navigateYear(1)">►</button>
             </div>
-            <button class="btn-header" onclick="rollbackToYear(2020)">rollback 2020</button>
+            <!-- Tombol Kembali Ke Hari Ini (Centered Red Line) -->
+            <button class="btn-header" onclick="goToToday()">today</button>
             <button class="btn-header" id="viewModeBtn" onclick="toggleViewMode()">view: 1 year</button>
             <button class="btn-header" id="viewerModeBtn" onclick="toggleViewerMode()">viewer mode: off</button>
             <button class="btn-header" onclick="logout()">logout</button>
@@ -596,10 +591,7 @@
     <!-- Main Gantt Area -->
     <div class="gantt-wrapper">
         <div class="gantt-sidebar" id="sidebarContainer">
-            <div class="sidebar-header">
-                <span style="flex:1;">struktur pekerjaan</span>
-                <span style="margin-right:8px;">mode</span>
-            </div>
+            <div class="sidebar-header"></div>
             <div class="sidebar-body" id="sidebarBody"></div>
         </div>
 
@@ -905,9 +897,9 @@
             }
         }
 
-        // Navigation Switcher & Year Rollback Controls
+        // Navigation Switcher & Year Limits (Mulai Tahun 2000)
         function setYear(year) {
-            if (isNaN(year) || year < 2020 || year > 2100) return;
+            if (isNaN(year) || year < 2000 || year > 2100) return;
             selectedYear = year;
             document.getElementById('yearPicker').value = year;
             renderHeader();
@@ -918,8 +910,28 @@
             setYear(selectedYear + delta);
         }
 
-        function rollbackToYear(year) {
-            setYear(year);
+        // Fungsi Kembali ke Hari Ini (Mensejajarkan Garis Merah ke Tengah)
+        function goToToday() {
+            const today = new Date();
+            const currentYear = today.getFullYear();
+
+            if (viewMode === '5year') {
+                setYear(currentYear - 2);
+            } else {
+                setYear(currentYear);
+            }
+
+            setTimeout(centerTodayLine, 60);
+        }
+
+        function centerTodayLine() {
+            const redLine = document.querySelector('.current-week-line');
+            const timeline = document.getElementById('timelineContainer');
+            if (redLine && timeline) {
+                const redLineLeft = redLine.offsetLeft;
+                const timelineWidth = timeline.clientWidth;
+                timeline.scrollLeft = redLineLeft - (timelineWidth / 2);
+            }
         }
 
         function toggleTaskMode(index) {
@@ -958,10 +970,10 @@
             const titleEl = document.getElementById('headerTitle');
             if (viewMode === '5year') {
                 btn.innerText = "view: 5 years";
-                titleEl.innerText = "5 years / zen gantt engine";
+                titleEl.innerText = "5 years";
             } else {
                 btn.innerText = "view: 1 year";
-                titleEl.innerText = "1 year / zen gantt engine";
+                titleEl.innerText = "1 year";
             }
             renderHeader();
             renderContent(true);
@@ -1092,7 +1104,6 @@
                 weeksRow.innerHTML = weekHTML;
 
             } else {
-                // 5-Year Multi-Year View
                 weeksRow.style.display = 'none';
                 let yearsHTML = '';
                 let quarterHTML = '';
