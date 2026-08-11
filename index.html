@@ -297,13 +297,8 @@
             user-select: none;
         }
 
-        .task-row.layer-hidden {
-            opacity: 0.35;
-        }
-
-        .task-row.has-conflict {
-            background-color: var(--conflict-bg);
-        }
+        .task-row.layer-hidden { opacity: 0.35; }
+        .task-row.has-conflict { background-color: var(--conflict-bg); }
         
         .task-row.drag-over-top { border-top: 2px solid var(--accent-color) !important; }
         .task-row.drag-over-bottom { border-bottom: 2px solid var(--accent-color) !important; }
@@ -650,7 +645,8 @@
         let activeBar = null, actionType = null, startMouseX = 0;
         let childrenInitialStates = [];
         let viewerMode = false;
-        let saveTimeout = null; // Variable untuk Debounce Queue
+        let saveTimeout = null; 
+        let isInitialLoadFromSupabase = true;
 
         function formatDateISO(d) {
             const year = d.getFullYear();
@@ -693,7 +689,7 @@
 
         let tasks = JSON.parse(localStorage.getItem('zen_gantt_tasks_v3')) || [];
 
-        // LOAD DATA DARI SUPABASE DENGAN PROTEKSI REFRESH
+        // LOAD DATA DARI SUPABASE DENGAN PROTEKSI LOCAL OVERWRITE
         async function loadTasksFromSupabase() {
             if (!dbClient) return;
             try {
@@ -703,8 +699,8 @@
                     .order('sort_order', { ascending: true });
 
                 if (!error && data && data.length > 0) {
-                    tasks = data.map(t => {
-                        return {
+                    if (isInitialLoadFromSupabase && tasks.length === 0) {
+                        tasks = data.map(t => ({
                             id: t.id,
                             name: t.name,
                             level: t.level,
@@ -718,16 +714,18 @@
                             collapsed: t.collapsed || false,
                             completed: t.completed || false,
                             hidden: t.hidden || false
-                        };
-                    });
-                    localStorage.setItem('zen_gantt_tasks_v3', JSON.stringify(tasks));
+                        }));
+                        localStorage.setItem('zen_gantt_tasks_v3', JSON.stringify(tasks));
+                    }
                 }
             } catch (e) {
                 console.error("Gagal load dari Supabase:", e);
+            } finally {
+                isInitialLoadFromSupabase = false;
             }
         }
 
-        // SISTEM AUTO-SAVE DENGAN DEBOUNCE (JEDA 1.5 DETIK) DAN INDIKATOR STATUS
+        // SISTEM AUTO-SAVE DENGAN DEBOUNCE (JEDA 1.5 DETIK) & STATUS INDIKATOR
         function saveTasksToStorage() {
             localStorage.setItem('zen_gantt_tasks_v3', JSON.stringify(tasks));
             
@@ -739,7 +737,6 @@
 
             if (saveTimeout) clearTimeout(saveTimeout);
 
-            // Jeda 1500 ms (1.5 detik) sebelum melakukan sync ke cloud Supabase
             saveTimeout = setTimeout(async () => {
                 if (!dbClient) {
                     if (statusEl) { statusEl.innerText = "saved"; statusEl.style.color = "var(--muted-color)"; }
@@ -760,7 +757,7 @@
                             hidden: t.hidden || false,
                             sort_order: idx
                         };
-                        if (t.id && typeof t.id === 'number') {
+                        if (t.id) {
                             row.id = t.id;
                         }
                         return row;
@@ -768,13 +765,14 @@
 
                     const { data, error } = await dbClient
                         .from('tasks')
-                        .upsert(payload)
+                        .upsert(payload, { onConflict: 'id' })
                         .select();
 
                     if (!error && data) {
-                        data.forEach(savedItem => {
-                            const target = tasks.find(t => t.name === savedItem.name && t.level === savedItem.level);
-                            if (target && !target.id) target.id = savedItem.id;
+                        data.forEach((savedItem, sIdx) => {
+                            if (tasks[sIdx] && !tasks[sIdx].id) {
+                                tasks[sIdx].id = savedItem.id;
+                            }
                         });
                         localStorage.setItem('zen_gantt_tasks_v3', JSON.stringify(tasks));
                     }
@@ -1314,6 +1312,7 @@
             timeline.innerHTML = timelineHTML;
         }
 
+        // MENGGUNAKAN ID BERBASIS TIMESTAMP AGAR AMAN DARI RACE CONDITION SAAT REFRESH
         function insertTaskAt(index) {
             if (viewerMode) return;
             let inheritLevel = 0;
@@ -1323,6 +1322,7 @@
             
             const todayStr = formatDateISO(new Date());
             tasks.splice(index, 0, { 
+                id: Date.now(),
                 name: "pekerjaan baru", 
                 level: inheritLevel, 
                 mode: 'MANUAL',
