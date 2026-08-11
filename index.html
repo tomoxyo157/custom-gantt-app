@@ -295,7 +295,6 @@
             user-select: none;
         }
 
-        /* Style Photoshop Layer Hidden (Redup di Sidebar) */
         .task-row.layer-hidden {
             opacity: 0.35;
         }
@@ -361,7 +360,6 @@
             opacity: 0.7;
         }
 
-        /* Hybrid Engine Mode & Conflict Badges */
         .mode-badge {
             font-size: 0.65rem;
             padding: 1px 5px;
@@ -443,7 +441,6 @@
 
         .grid-bg-line { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line-color); pointer-events: none; }
 
-        /* Task Bars & Ghost Overrun Indicators */
         .task-bar {
             position: absolute;
             height: calc(var(--row-height) - 10px);
@@ -547,7 +544,6 @@
         .btn-secondary { background: transparent; color: var(--muted-color); border: 1px solid var(--border-color); }
         .btn-secondary:hover { color: var(--text-color); background: var(--border-color); }
 
-        /* Mobile Styling */
         @media (max-width: 768px) {
             body { padding: 8px; }
             :root { --sidebar-width: 240px; }
@@ -572,17 +568,15 @@
         </div>
     </div>
 
-    <!-- Main Header Bar with Dynamic Year Switcher Controls -->
+    <!-- Header Bar -->
     <header>
         <div class="header-title" id="headerTitle">1 year</div>
         <div class="header-controls">
-            <!-- Year Switcher On-Demand (Min 2000 untuk rentang 1 abad) -->
             <div class="year-selector-group">
                 <button class="btn-header" onclick="navigateYear(-1)">◄</button>
                 <input type="number" id="yearPicker" class="year-input" min="2000" max="2100" value="2026" onchange="setYear(parseInt(this.value))">
                 <button class="btn-header" onclick="navigateYear(1)">►</button>
             </div>
-            <!-- Tombol Kembali Ke Hari Ini (Centered Red Line) -->
             <button class="btn-header" onclick="goToToday()">today</button>
             <button class="btn-header" id="viewModeBtn" onclick="toggleViewMode()">view: 1 year</button>
             <button class="btn-header" id="viewerModeBtn" onclick="toggleViewerMode()">viewer mode: off</button>
@@ -628,7 +622,6 @@
     </div>
 
     <script>
-        // === REGISTRASI SERVICE WORKER UNTUK PWA ===
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js')
@@ -637,7 +630,6 @@
             });
         }
 
-        // === INISIALISASI SUPABASE ===
         const SUPABASE_URL = 'https://movcjscdntwckaslnumn.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vdmNqc2NkbnR3Y2thc2xudW1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUwNDU3ODUsImV4cCI6MjEwMDYyMTc4NX0.rGYGREApohqwSaArGr4DtZXeuUJ0OUE7QeOyNjpswv8';
 
@@ -646,16 +638,14 @@
             dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         }
 
-        // State Global Aplikasi
         let selectedYear = 2026;
-        let viewMode = '1year'; // '1year' atau '5year'
+        let viewMode = '1year';
         let draggedTaskIndex = null;
         let currentEditingIndex = null;
         let activeBar = null, actionType = null, startMouseX = 0;
         let childrenInitialStates = [];
         let viewerMode = false;
 
-        // Date Helper Functions
         function formatDateISO(d) {
             const year = d.getFullYear();
             const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -669,7 +659,6 @@
             return formatDateISO(d);
         }
 
-        // Calculation Weeks On-Demand for any selected year
         function getYearWeeks(year) {
             const weeks = [];
             let currentMonday = new Date(year, 0, 1);
@@ -696,38 +685,9 @@
             return weeks;
         }
 
-        function weekNumberToDates(wStart, wEnd, year = selectedYear) {
-            const weeks = getYearWeeks(year);
-            const sIdx = Math.max(1, Math.min(wStart, 52)) - 1;
-            const eIdx = Math.max(1, Math.min(wEnd, 52)) - 1;
-            return {
-                startDate: weeks[sIdx].startDateStr,
-                endDate: weeks[eIdx].endDateStr
-            };
-        }
+        let tasks = JSON.parse(localStorage.getItem('zen_gantt_tasks_v3')) || [];
 
-        // Default Task Data Kosong (Compact / Clean Setup)
-        let defaultRawTasks = [];
-
-        let tasks = JSON.parse(localStorage.getItem('zen_gantt_tasks_v3')) || defaultRawTasks.map(t => {
-            return {
-                id: t.id,
-                name: t.name,
-                level: t.level,
-                mode: t.mode || 'MANUAL',
-                startDate: t.startDate || t.targetStart,
-                endDate: t.endDate || t.targetEnd,
-                calculatedStart: null,
-                calculatedEnd: null,
-                hasConflict: false,
-                notes: t.notes || "",
-                collapsed: t.collapsed || false,
-                completed: t.completed || false,
-                hidden: t.hidden || false
-            };
-        });
-
-        // Memuat Data dari Supabase
+        // LOAD DATA DARI SUPABASE DENGAN PROTEKSI REFRESH
         async function loadTasksFromSupabase() {
             if (!dbClient) return;
             try {
@@ -736,22 +696,16 @@
                     .select('*')
                     .order('sort_order', { ascending: true });
 
+                // HANYA TIMPA JIKA SUPABASE TERISI DATA
                 if (!error && data && data.length > 0) {
                     tasks = data.map(t => {
-                        let sDate = t.start_date;
-                        let eDate = t.end_date;
-                        if (!sDate && t.start_week) {
-                            const converted = weekNumberToDates(t.start_week, t.end_week || t.start_week, selectedYear);
-                            sDate = converted.startDate;
-                            eDate = converted.endDate;
-                        }
                         return {
                             id: t.id,
                             name: t.name,
                             level: t.level,
                             mode: t.mode || 'MANUAL',
-                            startDate: sDate || `${selectedYear}-01-05`,
-                            endDate: eDate || `${selectedYear}-01-25`,
+                            startDate: t.start_date || `${selectedYear}-01-05`,
+                            endDate: t.end_date || `${selectedYear}-01-25`,
                             calculatedStart: null,
                             calculatedEnd: null,
                             hasConflict: false,
@@ -768,7 +722,7 @@
             }
         }
 
-        // Menyimpan Data ke Supabase & LocalStorage
+        // SIMPAN DATA KE LOCALSTORAGE & SUPABASE
         async function saveTasksToStorage() {
             localStorage.setItem('zen_gantt_tasks_v3', JSON.stringify(tasks));
             if (!dbClient) return;
@@ -795,25 +749,21 @@
 
                 const { data, error } = await dbClient
                     .from('tasks')
-                    .upsert(payload, { onConflict: 'id' })
+                    .upsert(payload)
                     .select();
-
-                if (error) console.error("Supabase upsert error:", error);
 
                 if (!error && data) {
                     data.forEach(savedItem => {
                         const target = tasks.find(t => t.name === savedItem.name && t.level === savedItem.level);
                         if (target && !target.id) target.id = savedItem.id;
                     });
+                    localStorage.setItem('zen_gantt_tasks_v3', JSON.stringify(tasks));
                 }
             } catch (e) {
                 console.error("Gagal simpan ke Supabase:", e);
             }
         }
 
-        /* ==========================================================================
-           HYBRID RECURSIVE ENGINE (TOP-DOWN & BOTTOM-UP ALGORITHM)
-           ========================================================================== */
         function processHybridTimelineEngine() {
             if (tasks.length === 0) return;
 
@@ -861,7 +811,6 @@
             }
         }
 
-        // Otentikasi & PIN Lock
         function checkPin() {
             const inputEl = document.getElementById('pinInput');
             const overlayEl = document.getElementById('pinOverlay');
@@ -899,20 +848,13 @@
             renderContent(true);
         }
 
-        function navigateYear(delta) {
-            setYear(selectedYear + delta);
-        }
+        function navigateYear(delta) { setYear(selectedYear + delta); }
 
         function goToToday() {
             const today = new Date();
             const currentYear = today.getFullYear();
-
-            if (viewMode === '5year') {
-                setYear(currentYear - 2);
-            } else {
-                setYear(currentYear);
-            }
-
+            if (viewMode === '5year') { setYear(currentYear - 2); } 
+            else { setYear(currentYear); }
             setTimeout(centerTodayLine, 60);
         }
 
@@ -932,13 +874,11 @@
             renderContent();
         }
 
-        // Fungsi Toggle Visibilitas Layer (Ala Photoshop)
         function toggleTaskVisibility(index, e) {
             e.stopPropagation();
             const newState = !tasks[index].hidden;
             tasks[index].hidden = newState;
 
-            // Jika induk dimatikan matanya, anak-anaknya ikut mati status visibilitasnya
             if (isParent(index)) {
                 let parentLevel = tasks[index].level;
                 for (let i = index + 1; i < tasks.length; i++) {
@@ -954,7 +894,6 @@
             renderContent();
         }
 
-        // Cek apakah task disembunyikan oleh dirinya sendiri atau leluhurnya (efektif tersembunyi dari timeline)
         function isTaskEffectivelyHidden(index) {
             if (tasks[index].hidden) return true;
             let currentLevel = tasks[index].level;
@@ -967,7 +906,6 @@
             return false;
         }
 
-        // Cek apakah baris di sidebar harus disembunyikan (hanya jika fold/collapsed oleh leluhurnya)
         function isAncestorCollapsed(index) {
             let currentLevel = tasks[index].level;
             for (let i = index - 1; i >= 0; i--) {
@@ -1030,7 +968,6 @@
             });
         }
 
-        // Sidebar Resizer
         const resizer = document.getElementById('sidebarResizer');
         let isResizingSidebar = false;
 
@@ -1061,7 +998,6 @@
             renderContent(true);
         });
 
-        // Sync Scroll Viewports
         const sidebarBody = document.getElementById('sidebarBody');
         const timelineContainer = document.getElementById('timelineContainer');
         let isSyncingSidebar = false;
@@ -1234,7 +1170,6 @@
             return { leftPercent: left, widthPercent: width };
         }
 
-        /* Render Core UI (Sidebar Tree & Timeline Canvas) */
         function renderContent(skipAutoUpdate = false) {
             processHybridTimelineEngine();
             saveTasksToStorage();
@@ -1252,7 +1187,6 @@
             let timelineHTML = '';
 
             tasks.forEach((task, index) => {
-                // Jika leluhurnya ditutup (collapsed), maka baris disembunyikan total baik di sidebar & timeline
                 if (isAncestorCollapsed(index)) return;
 
                 const indent = Math.min(task.level, 6) * 14;
@@ -1280,7 +1214,6 @@
                     ? `<span class="conflict-tag" title="Child melebihi target induk!">KONFLIK</span>`
                     : '';
 
-                // Sidebar tetap tampil, jika hidden/invisible diberi style .layer-hidden (redup)
                 sidebarHTML += `
                     <div class="task-row-container">
                         ${addTriggerHTML}
@@ -1306,14 +1239,12 @@
                     </div>
                 `;
 
-                // Garis/Lajur timeline SELALU dirender agar sinkron dengan sidebar!
                 let gridLines = '';
                 const lineCount = (viewMode === '1year') ? 52 : 20;
                 for(let l = 0; l < lineCount; l++) {
                     gridLines += `<div class="grid-bg-line" style="left: ${(l / lineCount) * 100}%;"></div>`;
                 }
 
-                // Hanya render elemen Batang (Bar) & Ghost Bar jika visibilitas aktif (!effectivelyHidden)
                 let barHTML = '';
                 if (!effectivelyHidden) {
                     const pos = getTaskPosition(task.startDate, task.endDate);
