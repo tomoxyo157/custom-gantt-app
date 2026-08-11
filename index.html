@@ -223,6 +223,13 @@
             border-bottom: 1px solid var(--border-color);
             flex-shrink: 0;
             background: var(--bg-color);
+            display: flex;
+            align-items: center;
+            padding: 0 14px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--muted-color);
+            letter-spacing: 0.5px;
         }
 
         .sidebar-body {
@@ -400,7 +407,7 @@
         .action-btn.del:hover { color: #ff3b30; }
         .action-btn.check.active { color: #2a9d8f; font-weight: bold; }
 
-        /* Timeline Area */
+        /* Timeline Area & Header Grid Fixes */
         .gantt-timeline {
             flex: 1;
             overflow-x: auto;
@@ -411,14 +418,68 @@
         }
         .gantt-timeline::-webkit-scrollbar { display: none; }
         
-        .timeline-grid-header { display: flex; flex-direction: column; position: sticky; top: 0; z-index: 8; background: var(--card-bg); width: 100%; min-width: 100%; height: 54px; }
+        .timeline-grid-header { 
+            display: flex; 
+            flex-direction: column; 
+            position: sticky; 
+            top: 0; 
+            z-index: 8; 
+            background: var(--card-bg); 
+            width: 100%; 
+            min-width: 100%; 
+            flex-shrink: 0;
+            border-bottom: 1px solid var(--border-color);
+        }
         
-        .years-row { display: flex; height: 20px; border-bottom: 1px solid var(--border-color); background: var(--bg-color); width: 100%; }
-        .year-cell { display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 600; color: var(--text-color); border-right: 1px solid var(--border-color); width: 100%; }
+        .years-row { 
+            display: flex; 
+            flex-wrap: nowrap;
+            height: 20px; 
+            border-bottom: 1px solid var(--border-color); 
+            background: var(--bg-color); 
+            width: 100%; 
+            flex-shrink: 0;
+        }
+        .year-cell { 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 0.8rem; 
+            font-weight: 600; 
+            color: var(--text-color); 
+            border-right: 1px solid var(--border-color); 
+            box-sizing: border-box;
+            flex-shrink: 0;
+        }
 
-        .months-row, .weeks-row { display: flex; height: 17px; border-bottom: 1px solid var(--border-color); width: 100%; }
-        .month-cell { border-right: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; font-size: 0.72rem; color: var(--muted-color); }
+        .months-row { 
+            display: flex; 
+            flex-wrap: nowrap;
+            height: 17px; 
+            border-bottom: 1px solid var(--border-color); 
+            width: 100%; 
+            flex-shrink: 0;
+        }
+        .month-cell { 
+            border-right: 1px solid var(--border-color); 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 0.72rem; 
+            color: var(--muted-color); 
+            box-sizing: border-box;
+            flex-shrink: 0;
+            overflow: hidden;
+            white-space: nowrap;
+        }
         
+        .weeks-row { 
+            display: flex; 
+            flex-wrap: nowrap;
+            height: 17px; 
+            width: 100%; 
+            flex-shrink: 0;
+        }
         .week-cell { 
             border-right: 1px solid var(--border-color); 
             display: flex; 
@@ -429,11 +490,19 @@
             opacity: 0.75;
             overflow: hidden;
             white-space: nowrap;
+            box-sizing: border-box;
+            flex-shrink: 0;
         }
         .week-cell.current { font-weight: bold; color: var(--red-line); opacity: 1; }
         .week-cell:hover { background: var(--border-color); opacity: 1; z-index: 5; }
 
-        .timeline-rows-container { position: relative; width: 100%; min-width: 100%; min-height: calc(100% - 54px); }
+        .timeline-rows-container { 
+            position: relative; 
+            width: 100%; 
+            min-width: 100%; 
+            min-height: calc(100% - 54px); 
+            flex: 1;
+        }
         .timeline-row-lane { height: var(--row-height); border-bottom: 1px solid var(--border-color); position: relative; display: flex; align-items: center; width: 100%; }
 
         .grid-bg-line { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line-color); pointer-events: none; }
@@ -599,7 +668,7 @@
     <!-- Main Gantt Area -->
     <main class="gantt-wrapper">
         <aside class="gantt-sidebar" id="sidebarContainer" role="complementary">
-            <div class="sidebar-header"></div>
+            <div class="sidebar-header">daftar pekerjaan</div>
             <div class="sidebar-body" id="sidebarBody"></div>
         </aside>
 
@@ -655,7 +724,7 @@
         let activeBar = null, actionType = null, startMouseX = 0;
         let childrenInitialStates = [];
         let viewerMode = false;
-        let isUserTyping = false; // Pengaman agar tidak terlempar saat mengetik
+        let isUserTyping = false; // Pengaman saat mengetik agar tidak re-render mendadak
 
         // --- OFFLINE SYNC ENGINE (QUEUE SYSTEM) ---
         const SyncEngine = {
@@ -1096,14 +1165,20 @@
 
         function toggleTheme() { document.body.classList.toggle('dark-mode'); }
 
+        /* FUNGSI RENDER HEADER TIMELINE (TAHUN, BULAN, MINGGU, KUARTAL) */
         function renderHeader() {
             const yearsRow = document.getElementById('yearsRow');
             const monthsRow = document.getElementById('monthsRow');
             const weeksRow = document.getElementById('weeksRow');
+            const gridHeader = document.getElementById('timelineGridHeader');
+
+            if (!yearsRow || !monthsRow || !weeksRow) return;
 
             if (viewMode === '1year') {
                 weeksRow.style.display = 'flex';
-                yearsRow.innerHTML = `<div class="year-cell">${selectedYear}</div>`;
+                if (gridHeader) gridHeader.style.height = '54px';
+
+                yearsRow.innerHTML = `<div class="year-cell" style="width: 100%;">${selectedYear}</div>`;
 
                 const monthNames = ["jan", "feb", "mar", "apr", "mei", "jun", "jul", "ags", "sep", "okt", "nov", "des"];
                 const weeks = getYearWeeks(selectedYear);
@@ -1132,6 +1207,8 @@
 
             } else {
                 weeksRow.style.display = 'none';
+                if (gridHeader) gridHeader.style.height = '37px';
+
                 let yearsHTML = '';
                 let quarterHTML = '';
                 
@@ -1145,6 +1222,7 @@
 
                 yearsRow.innerHTML = yearsHTML;
                 monthsRow.innerHTML = quarterHTML;
+                weeksRow.innerHTML = '';
             }
         }
 
@@ -1223,8 +1301,8 @@
         }
 
         function renderContent(skipAutoUpdate = false) {
-            // Mencegah render ulang total saat user sedang aktif mengetik di placeholder
-            if (isUserTyping || document.activeElement.classList.contains('task-name-text')) {
+            // Mencegah render ulang total saat user sedang aktif mengetik
+            if (isUserTyping || (document.activeElement && document.activeElement.classList.contains('task-name-text'))) {
                 return;
             }
 
