@@ -553,11 +553,12 @@
 </head>
 <body class="dark-mode" id="bodyRoot">
 
-    <!-- Tambahkan di dalam <body> (sesuaikan gaya CSS dengan aplikasi Anda) -->
+    <!-- Tombol Reset Cache / Force Refresh -->
     <button 
         id="fix-data-btn" 
         onclick="resetAppCache()" 
-        style="position: fixed; bottom: 10px; right: 10px; z-index: 9999; padding: 5px 10px; font-size: 10px; background: #ff4d4d; color: white; border: none; border-radius: 4px; cursor: pointer; opacity: 0.5;">
+        style="position: fixed; bottom: 10px; right: 10px; z-index: 9999; padding: 5px 10px; font-size: 10px; background: #ff4d4d; color: white; border: none; border-radius: 4px; cursor: pointer; opacity: 0.6;"
+        title="Klik jika data di perangkat lain lambat memperbarui">
         Refresh Data (Fix)
     </button>
 
@@ -630,6 +631,7 @@
     </div>
 
     <script>
+        // Service Worker Registration
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js')
@@ -653,7 +655,6 @@
         let activeBar = null, actionType = null, startMouseX = 0;
         let childrenInitialStates = [];
         let viewerMode = false;
-        let isInitialLoadFromSupabase = true;
 
         // --- OFFLINE SYNC ENGINE (QUEUE SYSTEM) ---
         const SyncEngine = {
@@ -673,7 +674,6 @@
                     statusEl.style.color = "var(--text-color)";
                 }
 
-                const item = this.queue[0];
                 try {
                     const payload = tasks.map((t, idx) => ({
                         id: t.id,
@@ -767,8 +767,8 @@
 
         let tasks = JSON.parse(localStorage.getItem('zen_gantt_tasks_v3')) || [];
 
-        // LOAD DATA DARI SUPABASE DENGAN PROTEKSI LOCAL OVERWRITE
-        async function loadTasksFromSupabase() {
+        // LOAD DATA DARI SUPABASE (REAL-TIME SYNC DIPERBAIKI)
+        async function loadTasksFromSupabase(forceUpdate = false) {
             if (!dbClient) return;
             try {
                 const { data, error } = await dbClient
@@ -776,8 +776,9 @@
                     .select('*')
                     .order('sort_order', { ascending: true });
 
-                if (!error && data && data.length > 0) {
-                    if (isInitialLoadFromSupabase && tasks.length === 0) {
+                if (!error && data) {
+                    // Update data lokal jika tidak ada perubahan lokal tertunda ATAU jika dipaksa
+                    if (SyncEngine.queue.length === 0 || forceUpdate) {
                         tasks = data.map(t => ({
                             id: t.id,
                             name: t.name,
@@ -798,12 +799,9 @@
                 }
             } catch (e) {
                 console.error("Gagal load dari Supabase:", e);
-            } finally {
-                isInitialLoadFromSupabase = false;
             }
         }
 
-        // FUNGSI PENYIMPANAN LOKAL DAN SYNC ENGINE INTEGRATION
         function saveTasksToStorage() {
             localStorage.setItem('zen_gantt_tasks_v3', JSON.stringify(tasks));
             SyncEngine.push('UPDATE_ALL', tasks);
@@ -1064,6 +1062,7 @@
             isSyncingTimeline = false;
         });
 
+        // INISIALISASI REAL-TIME & AUTO-POLLING FALLBACK
         async function initGantt() {
             if (localStorage.getItem('zen_gantt_auth') === 'true') {
                 const overlayEl = document.getElementById('pinOverlay');
@@ -1074,17 +1073,28 @@
             }
 
             renderHeader();
-            await loadTasksFromSupabase();
+            await loadTasksFromSupabase(true);
             renderContent();
             SyncEngine.process();
 
             if (dbClient) {
+                // 1. Berlangganan Real-time WebSocket
                 dbClient.channel('public:tasks')
-                    .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, async () => {
-                        await loadTasksFromSupabase();
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, async (payload) => {
+                        console.log('Perubahan terdeteksi dari perangkat lain!', payload);
+                        await loadTasksFromSupabase(true);
                         renderContent(true);
                     })
                     .subscribe();
+
+                // 2. Auto-polling Fallback (3 Detik) jika Realtime terblokir oleh Firewall jaringan
+                setInterval(() => {
+                    if (!document.hidden && SyncEngine.queue.length === 0) {
+                        loadTasksFromSupabase(false).then(() => {
+                            renderContent(true);
+                        });
+                    }
+                }, 3000);
             }
         }
 
@@ -1218,7 +1228,9 @@
 
         function renderContent(skipAutoUpdate = false) {
             processHybridTimelineEngine();
-            saveTasksToStorage();
+            if (!skipAutoUpdate) {
+                saveTasksToStorage();
+            }
 
             const sidebar = document.getElementById('sidebarBody');
             const timeline = document.getElementById('timelineRowsContainer');
@@ -1578,74 +1590,32 @@
             return indices;
         }
 
+        // FUNGSI MEMBERSIHKAN CACHE APLIKASI SECARA TOTAL
+        async function resetAppCache() {
+            console.log("Memulai proses pembersihan cache...");
+            
+            // 1. Unregister Service Worker
+            if ('serviceWorker' in navigator) {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                for (let registration of registrations) {
+                    await registration.unregister();
+                }
+            }
+
+            // 2. Hapus Cache Browser
+            if ('caches' in window) {
+                const cacheNames = await caches.keys();
+                for (let name of cacheNames) {
+                    await caches.delete(name);
+                }
+            }
+
+            // 3. Reload Paksa
+            alert("Cache dibersihkan. Aplikasi akan dimuat ulang.");
+            window.location.reload(true);
+        }
+
         window.onload = initGantt;
     </script>
-
-    <!-- KODE INTEGRASI OPSI 2 & 3 -->
-<script>
-/**
- * OPSI 2: Fungsi Kill Switch untuk membersihkan SW dan Cache
- * Panggil fungsi ini jika pengguna melaporkan data tidak terupdate
- */
-async function resetAppCache() {
-    console.log("Memulai proses pembersihan cache...");
-    
-    // 1. Unregister Service Worker
-    if ('serviceWorker' in navigator) {
-        const registrations = await navigator.serviceWorker.getRegistrations();
-        for (let registration of registrations) {
-            await registration.unregister();
-            console.log('Service Worker di-unregister.');
-        }
-    }
-
-    // 2. Hapus Cache Browser
-    if ('caches' in window) {
-        const cacheNames = await caches.keys();
-        for (let name of cacheNames) {
-            await caches.delete(name);
-            console.log(`Cache ${name} dihapus.`);
-        }
-    }
-
-    // 3. Reload Paksa
-    alert("Cache dibersihkan. Aplikasi akan dimuat ulang.");
-    window.location.reload(true);
-}
-
-/**
- * OPSI 3: Fetch Data dengan Header Anti-Cache
- * Gunakan fungsi wrapper ini untuk setiap request ke Supabase
- */
-async function fetchSafe(url, options = {}) {
-    // Tambahkan header untuk memaksa browser tidak menyimpan cache
-    const headers = {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0',
-        ...(options.headers || {})
-    };
-
-    const response = await fetch(url, { ...options, headers });
-    return response;
-}
-
-// Contoh implementasi pada pemanggilan Supabase:
-// (Ganti bagian pemanggilan data lama Anda dengan pola ini)
-async function loadDataSupabase() {
-    try {
-        // Jika Anda menggunakan Supabase JS Client, secara default sudah cukup aman.
-        // Tapi jika Anda melakukan manual fetch, gunakan:
-        const { data, error } = await supabase
-            .from('tasks')
-            .select('*');
-            
-        if (error) throw error;
-        renderGantt(data);
-    } catch (err) {
-        console.error("Gagal fetch:", err);
-    }
-}
-</script>
 </body>
 </html>
