@@ -553,6 +553,14 @@
 </head>
 <body class="dark-mode" id="bodyRoot">
 
+    <!-- Tambahkan di dalam <body> (sesuaikan gaya CSS dengan aplikasi Anda) -->
+    <button 
+        id="fix-data-btn" 
+        onclick="resetAppCache()" 
+        style="position: fixed; bottom: 10px; right: 10px; z-index: 9999; padding: 5px 10px; font-size: 10px; background: #ff4d4d; color: white; border: none; border-radius: 4px; cursor: pointer; opacity: 0.5;">
+        Refresh Data (Fix)
+    </button>
+
     <!-- Screen PIN Authentication Overlay -->
     <div class="pin-overlay" id="pinOverlay">
         <div class="pin-card">
@@ -1572,5 +1580,72 @@
 
         window.onload = initGantt;
     </script>
+
+    <!-- KODE INTEGRASI OPSI 2 & 3 -->
+<script>
+/**
+ * OPSI 2: Fungsi Kill Switch untuk membersihkan SW dan Cache
+ * Panggil fungsi ini jika pengguna melaporkan data tidak terupdate
+ */
+async function resetAppCache() {
+    console.log("Memulai proses pembersihan cache...");
+    
+    // 1. Unregister Service Worker
+    if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (let registration of registrations) {
+            await registration.unregister();
+            console.log('Service Worker di-unregister.');
+        }
+    }
+
+    // 2. Hapus Cache Browser
+    if ('caches' in window) {
+        const cacheNames = await caches.keys();
+        for (let name of cacheNames) {
+            await caches.delete(name);
+            console.log(`Cache ${name} dihapus.`);
+        }
+    }
+
+    // 3. Reload Paksa
+    alert("Cache dibersihkan. Aplikasi akan dimuat ulang.");
+    window.location.reload(true);
+}
+
+/**
+ * OPSI 3: Fetch Data dengan Header Anti-Cache
+ * Gunakan fungsi wrapper ini untuk setiap request ke Supabase
+ */
+async function fetchSafe(url, options = {}) {
+    // Tambahkan header untuk memaksa browser tidak menyimpan cache
+    const headers = {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        ...(options.headers || {})
+    };
+
+    const response = await fetch(url, { ...options, headers });
+    return response;
+}
+
+// Contoh implementasi pada pemanggilan Supabase:
+// (Ganti bagian pemanggilan data lama Anda dengan pola ini)
+async function loadDataSupabase() {
+    try {
+        // Jika Anda menggunakan Supabase JS Client, secara default sudah cukup aman.
+        // Tapi jika Anda melakukan manual fetch, gunakan:
+        const { data, error } = await supabase
+            .from('tasks')
+            .select('*');
+            
+        if (error) throw error;
+        renderGantt(data);
+    } catch (err) {
+        console.error("Gagal fetch:", err);
+    }
+}
+</script>
 </body>
 </html>
