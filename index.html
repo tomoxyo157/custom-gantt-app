@@ -588,23 +588,23 @@
     </header>
 
     <!-- Main Gantt Area -->
-    <div class="gantt-wrapper">
-        <div class="gantt-sidebar" id="sidebarContainer">
+    <main class="gantt-wrapper">
+        <aside class="gantt-sidebar" id="sidebarContainer" role="complementary">
             <div class="sidebar-header"></div>
             <div class="sidebar-body" id="sidebarBody"></div>
-        </div>
+        </aside>
 
-        <div class="sidebar-resizer" id="sidebarResizer"></div>
+        <div class="sidebar-resizer" id="sidebarResizer" role="separator"></div>
 
-        <div class="gantt-timeline" id="timelineContainer">
-            <div class="timeline-grid-header" id="timelineGridHeader">
+        <article class="gantt-timeline" id="timelineContainer" role="main">
+            <header class="timeline-grid-header" id="timelineGridHeader">
                 <div class="years-row" id="yearsRow"></div>
                 <div class="months-row" id="monthsRow"></div>
                 <div class="weeks-row" id="weeksRow"></div>
-            </div>
-            <div class="timeline-rows-container" id="timelineRowsContainer"></div>
-        </div>
-    </div>
+            </header>
+            <section class="timeline-rows-container" id="timelineRowsContainer"></section>
+        </article>
+    </main>
 
     <!-- Modal Catatan -->
     <div class="modal-overlay" id="notesModal" onclick="closeModalOnOverlay(event)">
@@ -645,8 +645,78 @@
         let activeBar = null, actionType = null, startMouseX = 0;
         let childrenInitialStates = [];
         let viewerMode = false;
-        let saveTimeout = null; 
         let isInitialLoadFromSupabase = true;
+
+        // --- OFFLINE SYNC ENGINE (QUEUE SYSTEM) ---
+        const SyncEngine = {
+            queue: JSON.parse(localStorage.getItem('zen_sync_queue') || '[]'),
+
+            push(action, data) {
+                this.queue.push({ action, data, ts: Date.now() });
+                localStorage.setItem('zen_sync_queue', JSON.stringify(this.queue));
+                this.process();
+            },
+
+            async process() {
+                if (!dbClient || this.queue.length === 0) return;
+                const statusEl = document.getElementById('saveStatus');
+                if (statusEl) {
+                    statusEl.innerText = "syncing...";
+                    statusEl.style.color = "var(--text-color)";
+                }
+
+                const item = this.queue[0];
+                try {
+                    const payload = tasks.map((t, idx) => ({
+                        id: t.id,
+                        name: t.name,
+                        level: t.level,
+                        mode: t.mode || 'MANUAL',
+                        start_date: t.startDate,
+                        end_date: t.endDate,
+                        notes: t.notes || "",
+                        collapsed: t.collapsed || false,
+                        completed: t.completed || false,
+                        hidden: t.hidden || false,
+                        sort_order: idx
+                    }));
+
+                    const { data, error } = await dbClient
+                        .from('tasks')
+                        .upsert(payload, { onConflict: 'id' })
+                        .select();
+
+                    if (!error && data) {
+                        data.forEach((savedItem, sIdx) => {
+                            if (tasks[sIdx] && !tasks[sIdx].id) {
+                                tasks[sIdx].id = savedItem.id;
+                            }
+                        });
+                        localStorage.setItem('zen_gantt_tasks_v3', JSON.stringify(tasks));
+                        this.queue.shift();
+                        localStorage.setItem('zen_sync_queue', JSON.stringify(this.queue));
+                        
+                        if (statusEl) {
+                            statusEl.innerText = "saved";
+                            statusEl.style.color = "var(--muted-color)";
+                        }
+                        if (this.queue.length > 0) {
+                            this.process();
+                        }
+                    }
+                } catch (e) {
+                    console.warn("Sync tertunda, koneksi offline:", e);
+                    if (statusEl) {
+                        statusEl.innerText = "offline (saved locally)";
+                        statusEl.style.color = "var(--red-line)";
+                    }
+                }
+            }
+        };
+
+        window.addEventListener('online', () => {
+            SyncEngine.process();
+        });
 
         function formatDateISO(d) {
             const year = d.getFullYear();
@@ -725,70 +795,10 @@
             }
         }
 
-        // SISTEM AUTO-SAVE DENGAN DEBOUNCE (JEDA 1.5 DETIK) & STATUS INDIKATOR
+        // FUNGSI PENYIMPANAN LOKAL DAN SYNC ENGINE INTEGRATION
         function saveTasksToStorage() {
             localStorage.setItem('zen_gantt_tasks_v3', JSON.stringify(tasks));
-            
-            const statusEl = document.getElementById('saveStatus');
-            if (statusEl) {
-                statusEl.innerText = "saving...";
-                statusEl.style.color = "var(--text-color)";
-            }
-
-            if (saveTimeout) clearTimeout(saveTimeout);
-
-            saveTimeout = setTimeout(async () => {
-                if (!dbClient) {
-                    if (statusEl) { statusEl.innerText = "saved"; statusEl.style.color = "var(--muted-color)"; }
-                    return;
-                }
-
-                try {
-                    const payload = tasks.map((t, idx) => {
-                        const row = {
-                            name: t.name,
-                            level: t.level,
-                            mode: t.mode || 'MANUAL',
-                            start_date: t.startDate,
-                            end_date: t.endDate,
-                            notes: t.notes || "",
-                            collapsed: t.collapsed || false,
-                            completed: t.completed || false,
-                            hidden: t.hidden || false,
-                            sort_order: idx
-                        };
-                        if (t.id) {
-                            row.id = t.id;
-                        }
-                        return row;
-                    });
-
-                    const { data, error } = await dbClient
-                        .from('tasks')
-                        .upsert(payload, { onConflict: 'id' })
-                        .select();
-
-                    if (!error && data) {
-                        data.forEach((savedItem, sIdx) => {
-                            if (tasks[sIdx] && !tasks[sIdx].id) {
-                                tasks[sIdx].id = savedItem.id;
-                            }
-                        });
-                        localStorage.setItem('zen_gantt_tasks_v3', JSON.stringify(tasks));
-                    }
-
-                    if (statusEl) {
-                        statusEl.innerText = "saved";
-                        statusEl.style.color = "var(--muted-color)";
-                    }
-                } catch (e) {
-                    console.error("Gagal simpan ke Supabase:", e);
-                    if (statusEl) {
-                        statusEl.innerText = "error saving";
-                        statusEl.style.color = "var(--red-line)";
-                    }
-                }
-            }, 1500);
+            SyncEngine.push('UPDATE_ALL', tasks);
         }
 
         function processHybridTimelineEngine() {
@@ -1058,6 +1068,7 @@
             renderHeader();
             await loadTasksFromSupabase();
             renderContent();
+            SyncEngine.process();
 
             if (dbClient) {
                 dbClient.channel('public:tasks')
@@ -1312,7 +1323,6 @@
             timeline.innerHTML = timelineHTML;
         }
 
-        // MENGGUNAKAN ID BERBASIS TIMESTAMP AGAR AMAN DARI RACE CONDITION SAAT REFRESH
         function insertTaskAt(index) {
             if (viewerMode) return;
             let inheritLevel = 0;
