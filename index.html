@@ -655,6 +655,7 @@
         let activeBar = null, actionType = null, startMouseX = 0;
         let childrenInitialStates = [];
         let viewerMode = false;
+        let isUserTyping = false; // Pengaman agar tidak terlempar saat mengetik
 
         // --- OFFLINE SYNC ENGINE (QUEUE SYSTEM) ---
         const SyncEngine = {
@@ -767,7 +768,6 @@
 
         let tasks = JSON.parse(localStorage.getItem('zen_gantt_tasks_v3')) || [];
 
-        // LOAD DATA DARI SUPABASE (REAL-TIME SYNC DIPERBAIKI)
         async function loadTasksFromSupabase(forceUpdate = false) {
             if (!dbClient) return;
             try {
@@ -777,7 +777,6 @@
                     .order('sort_order', { ascending: true });
 
                 if (!error && data) {
-                    // Update data lokal jika tidak ada perubahan lokal tertunda ATAU jika dipaksa
                     if (SyncEngine.queue.length === 0 || forceUpdate) {
                         tasks = data.map(t => ({
                             id: t.id,
@@ -1062,7 +1061,6 @@
             isSyncingTimeline = false;
         });
 
-        // INISIALISASI REAL-TIME & AUTO-POLLING FALLBACK
         async function initGantt() {
             if (localStorage.getItem('zen_gantt_auth') === 'true') {
                 const overlayEl = document.getElementById('pinOverlay');
@@ -1078,7 +1076,6 @@
             SyncEngine.process();
 
             if (dbClient) {
-                // 1. Berlangganan Real-time WebSocket
                 dbClient.channel('public:tasks')
                     .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, async (payload) => {
                         console.log('Perubahan terdeteksi dari perangkat lain!', payload);
@@ -1087,9 +1084,8 @@
                     })
                     .subscribe();
 
-                // 2. Auto-polling Fallback (3 Detik) jika Realtime terblokir oleh Firewall jaringan
                 setInterval(() => {
-                    if (!document.hidden && SyncEngine.queue.length === 0) {
+                    if (!document.hidden && SyncEngine.queue.length === 0 && !isUserTyping) {
                         loadTasksFromSupabase(false).then(() => {
                             renderContent(true);
                         });
@@ -1227,6 +1223,11 @@
         }
 
         function renderContent(skipAutoUpdate = false) {
+            // Mencegah render ulang total saat user sedang aktif mengetik di placeholder
+            if (isUserTyping || document.activeElement.classList.contains('task-name-text')) {
+                return;
+            }
+
             processHybridTimelineEngine();
             if (!skipAutoUpdate) {
                 saveTasksToStorage();
@@ -1368,15 +1369,6 @@
             });
             sanitizeHierarchy();
             renderContent();
-        }
-
-        function updateTaskNameInline(index, newName) {
-            if (newName.trim() !== "") {
-                tasks[index].name = newName.trim();
-                saveTasksToStorage();
-                const bars = document.querySelectorAll('.bar-content');
-                if (bars[index]) bars[index].innerText = newName.trim();
-            }
         }
 
         function openNotes(index) {
@@ -1590,25 +1582,25 @@
             return indices;
         }
 
-        // Fungsi dipanggil saat menekan Enter atau keluar fokus
+        // Penanganan input & tombol Enter pada task name
         function handleTaskKeydown(event, index, element) {
+            isUserTyping = true;
             if (event.key === 'Enter') {
-                event.preventDefault(); // Mencegah baris baru (enter ke bawah)
-                element.blur(); // Memicu penyimpanan dengan mencabut fokus secara bersih
+                event.preventDefault();
+                isUserTyping = false;
+                element.blur();
             }
         }
 
         function commitTaskName(index, element) {
+            isUserTyping = false;
             const newName = element.innerText.trim();
             if (newName !== "" && tasks[index].name !== newName) {
                 tasks[index].name = newName;
                 saveTasksToStorage();
-                // Update teks pada bar chart timeline tanpa merender ulang seluruh sidebar 
-                // agar kursor tidak terlempar keluar saat sedang mengetik
                 const bars = document.querySelectorAll('.bar-content');
                 if (bars[index]) bars[index].innerText = newName;
             } else if (newName === "") {
-                // Kembalikan ke nama sebelumnya jika dikosongkan
                 element.innerText = tasks[index].name;
             }
         }
@@ -1617,7 +1609,6 @@
         async function resetAppCache() {
             console.log("Memulai proses pembersihan cache...");
             
-            // 1. Unregister Service Worker
             if ('serviceWorker' in navigator) {
                 const registrations = await navigator.serviceWorker.getRegistrations();
                 for (let registration of registrations) {
@@ -1625,7 +1616,6 @@
                 }
             }
 
-            // 2. Hapus Cache Browser
             if ('caches' in window) {
                 const cacheNames = await caches.keys();
                 for (let name of cacheNames) {
@@ -1633,7 +1623,6 @@
                 }
             }
 
-            // 3. Reload Paksa
             alert("Cache dibersihkan. Aplikasi akan dimuat ulang.");
             window.location.reload(true);
         }
