@@ -441,7 +441,7 @@
         /* Task Bars & Ghost Overrun Indicators */
         .task-bar {
             position: absolute;
-            height: 18px;
+            height: calc(var(--row-height) - 10px);
             background: var(--text-color);
             border-radius: 3px;
             display: flex;
@@ -667,7 +667,6 @@
         // Calculation Weeks On-Demand for any selected year
         function getYearWeeks(year) {
             const weeks = [];
-            // Pick first Monday of January
             let currentMonday = new Date(year, 0, 1);
             while (currentMonday.getDay() !== 1) {
                 currentMonday.setDate(currentMonday.getDate() + 1);
@@ -702,7 +701,7 @@
             };
         }
 
-        // Raw Default Task Data dengan Mode Hybrid (AUTO vs MANUAL)
+        // Default Task Data Kosong (Compact / Clean Setup)
         let defaultRawTasks = [];
 
         let tasks = JSON.parse(localStorage.getItem('zen_gantt_tasks_v3')) || defaultRawTasks.map(t => {
@@ -711,14 +710,15 @@
                 name: t.name,
                 level: t.level,
                 mode: t.mode || 'MANUAL',
-                startDate: t.targetStart,
-                endDate: t.targetEnd,
+                startDate: t.startDate || t.targetStart,
+                endDate: t.endDate || t.targetEnd,
                 calculatedStart: null,
                 calculatedEnd: null,
                 hasConflict: false,
                 notes: t.notes || "",
                 collapsed: t.collapsed || false,
-                completed: t.completed || false
+                completed: t.completed || false,
+                hidden: t.hidden || false
             };
         });
 
@@ -752,7 +752,8 @@
                             hasConflict: false,
                             notes: t.notes || "",
                             collapsed: t.collapsed || false,
-                            completed: t.completed || false
+                            completed: t.completed || false,
+                            hidden: t.hidden || false
                         };
                     });
                     localStorage.setItem('zen_gantt_tasks_v3', JSON.stringify(tasks));
@@ -778,6 +779,7 @@
                         notes: t.notes || "",
                         collapsed: t.collapsed || false,
                         completed: t.completed || false,
+                        hidden: t.hidden || false,
                         sort_order: idx
                     };
                     if (t.id && typeof t.id === 'number') {
@@ -810,13 +812,10 @@
         function processHybridTimelineEngine() {
             if (tasks.length === 0) return;
 
-            // Iterate bottom-up from last element to top to aggregate parent tasks accurately
             for (let i = tasks.length - 1; i >= 0; i--) {
-                const curLevel = tasks[i].level;
                 const childIndices = getSubtaskIndicesList(i);
 
                 if (childIndices.length > 0) {
-                    // Collect dates of immediate and direct children
                     let minStart = null;
                     let maxEnd = null;
 
@@ -833,14 +832,12 @@
                     tasks[i].calculatedEnd = maxEnd;
 
                     if (tasks[i].mode === 'AUTO') {
-                        // BOTTOM-UP MODE: Parent timeline dates dynamically adopt child range
                         if (minStart && maxEnd) {
                             tasks[i].startDate = minStart;
                             tasks[i].endDate = maxEnd;
                         }
                         tasks[i].hasConflict = false;
                     } else {
-                        // TOP-DOWN MODE: Parent dates are locked manually. Check for Overrun / Variance Conflict
                         if (minStart && maxEnd) {
                             if (minStart < tasks[i].startDate || maxEnd > tasks[i].endDate) {
                                 tasks[i].hasConflict = true;
@@ -889,7 +886,6 @@
             }
         }
 
-        // Navigation Switcher & Year Limits (Mulai Tahun 2000)
         function setYear(year) {
             if (isNaN(year) || year < 2000 || year > 2100) return;
             selectedYear = year;
@@ -902,7 +898,6 @@
             setYear(selectedYear + delta);
         }
 
-        // Fungsi Kembali ke Hari Ini (Mensejajarkan Garis Merah ke Tengah)
         function goToToday() {
             const today = new Date();
             const currentYear = today.getFullYear();
@@ -930,6 +925,42 @@
             if (viewerMode) return;
             tasks[index].mode = tasks[index].mode === 'AUTO' ? 'MANUAL' : 'AUTO';
             renderContent();
+        }
+
+        // Fungsi Toggle Visibilitas Card Task & Anak-anaknya
+        function toggleTaskVisibility(index, e) {
+            e.stopPropagation();
+            const newState = !tasks[index].hidden;
+            tasks[index].hidden = newState;
+
+            // Jika induk disembunyikan/ditampilkan, anak-anaknya ikut mengikuti status induk
+            if (isParent(index)) {
+                let parentLevel = tasks[index].level;
+                for (let i = index + 1; i < tasks.length; i++) {
+                    if (tasks[i].level > parentLevel) {
+                        tasks[i].hidden = newState;
+                    } else {
+                        break;
+                    }
+                }
+            }
+
+            saveTasksToStorage();
+            renderContent();
+        }
+
+        // Fungsi Cek Visibilitas Sesuai Hierarki
+        function isTaskVisible(index) {
+            if (tasks[index].hidden) return false;
+
+            let currentLevel = tasks[index].level;
+            for (let i = index - 1; i >= 0; i--) {
+                if (tasks[i].level < currentLevel) {
+                    if (tasks[i].collapsed || tasks[i].hidden) return false;
+                    currentLevel = tasks[i].level;
+                }
+            }
+            return true;
         }
 
         window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
@@ -1133,17 +1164,6 @@
             }
         }
 
-        function isTaskVisible(index) {
-            let currentLevel = tasks[index].level;
-            for (let i = index - 1; i >= 0; i--) {
-                if (tasks[i].level < currentLevel) {
-                    if (tasks[i].collapsed) return false;
-                    currentLevel = tasks[i].level;
-                }
-            }
-            return true;
-        }
-
         function toggleCollapse(index, e) {
             e.stopPropagation();
             tasks[index].collapsed = !tasks[index].collapsed;
@@ -1225,7 +1245,6 @@
                     ? `<span class="toggle-btn" onclick="toggleCollapse(${index}, event)" title="${task.collapsed ? 'buka anak' : 'tutup anak'}">${task.collapsed ? '▶' : '▼'}</span>`
                     : `<span class="toggle-btn-placeholder"></span>`;
 
-                // Handle Enter to accept/blur task name editing without adding new line
                 const editableAttr = viewerMode ? '' : `contenteditable="true" onblur="updateTaskNameInline(${index}, this.innerText)" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}"`;
                 
                 const dragAttrs = viewerMode ? '' : `draggable="true" ondragstart="dragStart(event, ${index})" ondragover="dragOver(event, ${index})" ondrop="drop(event, ${index})" ondragleave="dragLeave(event)"`;
@@ -1255,7 +1274,8 @@
                                 ${conflictBadgeHTML}
                                 <div class="task-actions">
                                     <button class="action-btn check ${task.completed ? 'active' : ''}" onclick="toggleCompleteTask(${index}, event)" title="centang/coret task">✓</button>
-                                    <button class="action-btn" onclick="openNotes(${index})" title="catatan">catatan</button>
+                                    <button class="action-btn" onclick="openNotes(${index})" title="catatan">📝</button>
+                                    <button class="action-btn" onclick="toggleTaskVisibility(${index}, event)" title="${task.hidden ? 'tampilkan bar' : 'sembunyikan bar'}">${task.hidden ? '🙈' : '👁️'}</button>
                                     ${viewerMode ? '' : `<button class="action-btn del" onclick="deleteTask(${index})" title="hapus">✕</button>`}
                                 </div>
                             </div>
@@ -1266,6 +1286,9 @@
                         </div>` : ''}
                     </div>
                 `;
+
+                // Jika task di-hidden, bar pada timeline tidak perlu dirender
+                if (task.hidden) return;
 
                 const pos = getTaskPosition(task.startDate, task.endDate);
                 
@@ -1278,7 +1301,6 @@
                     gridLines += `<div class="grid-bg-line" style="left: ${(l / lineCount) * 100}%;"></div>`;
                 }
 
-                // Render Overrun / Conflict Ghost Bar Indicator for Top-Down Locked Parents
                 let ghostBarHTML = '';
                 if (isPar && task.mode === 'MANUAL' && task.calculatedStart && task.calculatedEnd) {
                     const posActual = getTaskPosition(task.calculatedStart, task.calculatedEnd);
@@ -1297,7 +1319,6 @@
                 `;
             });
 
-            // Red Line Indicator Dynamic Today
             const todayStr = formatDateISO(new Date());
             const posToday = getTaskPosition(todayStr, todayStr);
             if (posToday.leftPercent >= 0 && posToday.leftPercent <= 100) {
@@ -1327,7 +1348,8 @@
                 hasConflict: false,
                 notes: "",
                 collapsed: false,
-                completed: false
+                completed: false,
+                hidden: false
             });
             sanitizeHierarchy();
             renderContent();
