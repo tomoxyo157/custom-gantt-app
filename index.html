@@ -359,8 +359,20 @@
 
         .months-row, .weeks-row { display: flex; height: 17px; border-bottom: 1px solid var(--border-color); width: 100%; }
         .month-cell { border-right: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; font-size: 0.72rem; color: var(--muted-color); }
-        .week-cell { border-right: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; font-size: 0.65rem; color: var(--muted-color); opacity: 0.7; }
+        
+        .week-cell { 
+            border-right: 1px solid var(--border-color); 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 0.55rem; 
+            color: var(--muted-color); 
+            opacity: 0.7;
+            overflow: hidden;
+            white-space: nowrap;
+        }
         .week-cell.current { font-weight: bold; color: var(--red-line); opacity: 1; }
+        .week-cell:hover { background: var(--border-color); opacity: 1; z-index: 5; }
 
         .timeline-rows-container { position: relative; width: 100%; min-height: calc(100% - 54px); }
         .timeline-row-lane { height: var(--row-height); border-bottom: 1px solid var(--border-color); position: relative; display: flex; align-items: center; width: 100%; }
@@ -534,7 +546,7 @@
             });
         }
 
-        // === INISIALISASI SUPABASE AMAN DARI KONFLIK VARIABEL ===
+        // === INISIALISASI SUPABASE ===
         const SUPABASE_URL = 'https://movcjscdntwckaslnumn.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vdmNqc2NkbnR3Y2thc2xudW1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUwNDU3ODUsImV4cCI6MjEwMDYyMTc4NX0.rGYGREApohqwSaArGr4DtZXeuUJ0OUE7QeOyNjpswv8';
 
@@ -623,6 +635,8 @@
                     .upsert(payload, { onConflict: 'id' })
                     .select();
 
+                if (error) console.error("Supabase upsert error:", error);
+
                 if (!error && data) {
                     data.forEach(savedItem => {
                         const target = tasks.find(t => t.name === savedItem.name && t.level === savedItem.level);
@@ -634,7 +648,7 @@
             }
         }
 
-        // === OTENTIKASI & PIN CHECKER (DIPERBAIKI) ===
+        // === OTENTIKASI & PIN CHECKER ===
         function checkPin() {
             const inputEl = document.getElementById('pinInput');
             const overlayEl = document.getElementById('pinOverlay');
@@ -799,27 +813,39 @@
                 {n:"okt",w:4}, {n:"nov",w:4}, {n:"des",w:4}
             ];
 
+            const monthNames = ["jan", "feb", "mar", "apr", "mei", "jun", "jul", "ags", "sep", "okt", "nov", "des"];
+
             monthsData.forEach(m => {
                 const monthPercent = (m.w / totalWeeksOfYear) * 100;
                 monthHTML += `<div class="month-cell" style="width: ${monthPercent}%;">${m.n}</div>`;
             });
 
+            function getFormattedDate(weekNumber) {
+                const year = 2026;
+                const firstDayOfYear = new Date(year, 0, 1);
+                const dayOffset = (1 - firstDayOfYear.getDay() + 7) % 7;
+                const firstMonday = new Date(year, 0, 1 + dayOffset);
+                
+                const d = new Date(firstMonday);
+                d.setDate(firstMonday.getDate() + (weekNumber - 1) * 7);
+                
+                const day = d.getDate();
+                const month = monthNames[d.getMonth()];
+                return `${day}-${month}`;
+            }
+
             const weekPercent = (1 / totalWeeksOfYear) * 100;
             for (let i = 1; i <= totalWeeksOfYear; i++) {
                 const isCurr = i === currentSystemWeek;
-                weekHTML += `<div class="week-cell ${isCurr ? 'current' : ''}" style="width: ${weekPercent}%;">${i}</div>`;
+                const dateLabel = getFormattedDate(i);
+                weekHTML += `<div class="week-cell ${isCurr ? 'current' : ''}" style="width: ${weekPercent}%;" title="minggu ${i}: ${dateLabel}">${dateLabel}</div>`;
             }
 
             const gridHeader = document.getElementById('timelineGridHeader');
             const rowsContainer = document.getElementById('timelineRowsContainer');
             
-            if (window.innerWidth > 768) {
-                gridHeader.style.width = '100%';
-                rowsContainer.style.width = '100%';
-            } else {
-                gridHeader.style.width = '1200px';
-                rowsContainer.style.width = '1200px';
-            }
+            gridHeader.style.width = '100%';
+            rowsContainer.style.width = '100%';
 
             document.getElementById('yearsRow').innerHTML = yearsHTML;
             document.getElementById('monthsRow').innerHTML = monthHTML;
