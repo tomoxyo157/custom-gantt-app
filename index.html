@@ -118,7 +118,7 @@
             align-items: center;
         }
         .header-title { font-size: 1.1rem; font-weight: 500; letter-spacing: 0.5px; }
-        .header-controls { display: flex; align-items: center; gap: 12px; }
+        .header-controls { display: flex; align-items: center; gap: 10px; }
 
         .theme-switch {
             position: relative;
@@ -365,9 +365,9 @@
             display: flex; 
             align-items: center; 
             justify-content: center; 
-            font-size: 0.55rem; 
+            font-size: 0.58rem; 
             color: var(--muted-color); 
-            opacity: 0.7;
+            opacity: 0.75;
             overflow: hidden;
             white-space: nowrap;
         }
@@ -390,6 +390,7 @@
             color: var(--bg-color);
             font-size: 0.7rem;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            min-width: 6px;
         }
         .task-bar.parent { background: var(--muted-color); font-weight: 600; }
         .task-bar.completed-bar { opacity: 0.4; background: var(--muted-color) !important; }
@@ -492,8 +493,9 @@
 
     <!-- Main Header -->
     <header>
-        <div class="header-title">1 year / zen gantt</div>
+        <div class="header-title" id="headerTitle">1 year / zen gantt</div>
         <div class="header-controls">
+            <button class="btn-header" id="viewModeBtn" onclick="toggleViewMode()">view: 1 year</button>
             <button class="btn-header" id="viewerModeBtn" onclick="toggleViewerMode()">viewer mode: off</button>
             <button class="btn-header" onclick="logout()">logout</button>
             <div class="theme-switch" onclick="toggleTheme()" title="toggle theme">
@@ -555,32 +557,77 @@
             dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         }
 
-        const totalWeeksOfYear = 52;
+        let viewMode = '1year'; // '1year' atau '5year'
         let draggedTaskIndex = null;
         let currentEditingIndex = null;
         let activeBar = null, actionType = null, startMouseX = 0;
         let childrenInitialStates = [];
         let viewerMode = false;
 
-        function getCurrentWeekOfYear() {
-            const now = new Date();
-            const startOfYear = new Date(now.getFullYear(), 0, 1);
-            const pastDays = (now - startOfYear) / 86400000;
-            return Math.ceil((pastDays + startOfYear.getDay() + 1) / 7);
+        // Date Helpers
+        function formatDateISO(d) {
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
         }
-        const currentSystemWeek = Math.min(Math.max(getCurrentWeekOfYear(), 1), 52);
 
-        // Data bawaan awal (Fallback)
-        let tasks = JSON.parse(localStorage.getItem('zen_gantt_tasks')) || [
-            { id: 1, name: "A. perencanaan strategis", level: 0, startWeek: currentSystemWeek, endWeek: currentSystemWeek + 3, notes: "induk utama", collapsed: false, completed: false },
-            { id: 2, name: "A1. riset pasar & target", level: 1, startWeek: currentSystemWeek, endWeek: currentSystemWeek + 1, notes: "anak dari A", collapsed: false, completed: false },
-            { id: 3, name: "A1a. sebar kuesioner", level: 2, startWeek: currentSystemWeek, endWeek: currentSystemWeek + 1, notes: "cucu dari A", collapsed: false, completed: false },
-            { id: 4, name: "A1b. olah data spss", level: 2, startWeek: currentSystemWeek + 1, endWeek: currentSystemWeek + 2, notes: "cucu dari A", collapsed: false, completed: false },
-            { id: 5, name: "A2. penyusunan anggaran", level: 1, startWeek: currentSystemWeek + 2, endWeek: currentSystemWeek + 3, notes: "anak dari A", collapsed: false, completed: false },
-            { id: 6, name: "B. sistem backend inti", level: 0, startWeek: currentSystemWeek + 4, endWeek: currentSystemWeek + 8, notes: "induk kedua", collapsed: false, completed: false }
+        function addDays(dateStr, days) {
+            const d = new Date(dateStr + 'T00:00:00');
+            d.setDate(d.getDate() + days);
+            return formatDateISO(d);
+        }
+
+        // Generate 52 Minggu riil untuk 2026 (Senin ke Senin)
+        function get2026Weeks() {
+            const weeks = [];
+            let currentMonday = new Date(2026, 0, 5); // Senin pertama 2026 = 5 Jan
+            for (let i = 0; i < 52; i++) {
+                const start = new Date(currentMonday);
+                const end = new Date(currentMonday);
+                end.setDate(end.getDate() + 6);
+                
+                weeks.push({
+                    index: i + 1,
+                    startDate: new Date(start),
+                    endDate: new Date(end),
+                    startDateStr: formatDateISO(start),
+                    endDateStr: formatDateISO(end),
+                    dayLabel: start.getDate().toString(), // format "d" tanpa leading 0
+                    monthIndex: start.getMonth()
+                });
+                currentMonday.setDate(currentMonday.getDate() + 7);
+            }
+            return weeks;
+        }
+
+        const weeks2026 = get2026Weeks();
+
+        function weekNumberToDates(wStart, wEnd) {
+            const sIdx = Math.max(1, Math.min(wStart, 52)) - 1;
+            const eIdx = Math.max(1, Math.min(wEnd, 52)) - 1;
+            return {
+                startDate: weeks2026[sIdx].startDateStr,
+                endDate: weeks2026[eIdx].endDateStr
+            };
+        }
+
+        // Data Bawaan Awal (Fallback)
+        let defaultRawTasks = [
+            { id: 1, name: "A. perencanaan strategis", level: 0, startWeek: 1, endWeek: 4, notes: "induk utama", collapsed: false, completed: false },
+            { id: 2, name: "A1. riset pasar & target", level: 1, startWeek: 1, endWeek: 2, notes: "anak dari A", collapsed: false, completed: false },
+            { id: 3, name: "A1a. sebar kuesioner", level: 2, startWeek: 1, endWeek: 2, notes: "cucu dari A", collapsed: false, completed: false },
+            { id: 4, name: "A1b. olah data spss", level: 2, startWeek: 2, endWeek: 3, notes: "cucu dari A", collapsed: false, completed: false },
+            { id: 5, name: "A2. penyusunan anggaran", level: 1, startWeek: 3, endWeek: 4, notes: "anak dari A", collapsed: false, completed: false },
+            { id: 6, name: "B. sistem backend inti", level: 0, startWeek: 5, endWeek: 9, notes: "induk kedua", collapsed: false, completed: false }
         ];
 
-        // Memuat data dari Supabase
+        let tasks = JSON.parse(localStorage.getItem('zen_gantt_tasks_v2')) || defaultRawTasks.map(t => {
+            const d = weekNumberToDates(t.startWeek, t.endWeek);
+            return { ...t, startDate: d.startDate, endDate: d.endDate };
+        });
+
+        // Memuat Data dari Supabase
         async function loadTasksFromSupabase() {
             if (!dbClient) return;
             try {
@@ -590,26 +637,35 @@
                     .order('sort_order', { ascending: true });
 
                 if (!error && data && data.length > 0) {
-                    tasks = data.map(t => ({
-                        id: t.id,
-                        name: t.name,
-                        level: t.level,
-                        startWeek: t.start_week,
-                        endWeek: t.end_week,
-                        notes: t.notes || "",
-                        collapsed: t.collapsed || false,
-                        completed: t.completed || false
-                    }));
-                    localStorage.setItem('zen_gantt_tasks', JSON.stringify(tasks));
+                    tasks = data.map(t => {
+                        let sDate = t.start_date;
+                        let eDate = t.end_date;
+                        if (!sDate && t.start_week) {
+                            const converted = weekNumberToDates(t.start_week, t.end_week || t.start_week);
+                            sDate = converted.startDate;
+                            eDate = converted.endDate;
+                        }
+                        return {
+                            id: t.id,
+                            name: t.name,
+                            level: t.level,
+                            startDate: sDate || "2026-01-05",
+                            endDate: eDate || "2026-01-25",
+                            notes: t.notes || "",
+                            collapsed: t.collapsed || false,
+                            completed: t.completed || false
+                        };
+                    });
+                    localStorage.setItem('zen_gantt_tasks_v2', JSON.stringify(tasks));
                 }
             } catch (e) {
                 console.error("Gagal load dari Supabase:", e);
             }
         }
 
-        // Menyimpan data ke Supabase & LocalStorage
+        // Menyimpan Data ke Supabase & LocalStorage
         async function saveTasksToStorage() {
-            localStorage.setItem('zen_gantt_tasks', JSON.stringify(tasks));
+            localStorage.setItem('zen_gantt_tasks_v2', JSON.stringify(tasks));
             if (!dbClient) return;
 
             try {
@@ -617,8 +673,8 @@
                     const row = {
                         name: t.name,
                         level: t.level,
-                        start_week: t.startWeek,
-                        end_week: t.endWeek,
+                        start_date: t.startDate,
+                        end_date: t.endDate,
                         notes: t.notes || "",
                         collapsed: t.collapsed || false,
                         completed: t.completed || false,
@@ -648,20 +704,17 @@
             }
         }
 
-        // === OTENTIKASI & PIN CHECKER ===
+        // Otentikasi & PIN
         function checkPin() {
             const inputEl = document.getElementById('pinInput');
             const overlayEl = document.getElementById('pinOverlay');
             if (!inputEl) return;
 
-            const inputVal = inputEl.value.trim();
-            if (inputVal === "1234") {
+            if (inputEl.value.trim() === "1234") {
                 localStorage.setItem('zen_gantt_auth', 'true');
                 overlayEl.style.pointerEvents = 'none';
                 overlayEl.style.opacity = '0';
-                setTimeout(() => { 
-                    overlayEl.style.display = 'none'; 
-                }, 300);
+                setTimeout(() => { overlayEl.style.display = 'none'; }, 300);
             } else {
                 alert("PIN salah! (Gunakan: 1234)");
                 inputEl.value = '';
@@ -686,15 +739,8 @@
         document.addEventListener('DOMContentLoaded', () => {
             const pinInput = document.getElementById('pinInput');
             const loginBtn = document.getElementById('loginBtn');
-
-            if (pinInput) {
-                pinInput.addEventListener('keydown', (e) => { 
-                    if (e.key === 'Enter') checkPin(); 
-                });
-            }
-            if (loginBtn) {
-                loginBtn.addEventListener('click', checkPin);
-            }
+            if (pinInput) pinInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') checkPin(); });
+            if (loginBtn) loginBtn.addEventListener('click', checkPin);
         });
 
         function toggleViewerMode() {
@@ -712,11 +758,26 @@
             }
         }
 
+        function toggleViewMode() {
+            viewMode = (viewMode === '1year') ? '5year' : '1year';
+            const btn = document.getElementById('viewModeBtn');
+            const titleEl = document.getElementById('headerTitle');
+            if (viewMode === '5year') {
+                btn.innerText = "view: 5 years";
+                titleEl.innerText = "5 years / zen gantt";
+            } else {
+                btn.innerText = "view: 1 year";
+                titleEl.innerText = "1 year / zen gantt";
+            }
+            renderHeader();
+            renderContent(true);
+        }
+
         if (window.innerWidth <= 768) {
             viewerMode = true;
             document.addEventListener('DOMContentLoaded', () => {
                 const btn = document.getElementById('viewerModeBtn');
-                if(btn) {
+                if (btn) {
                     btn.innerText = "viewer mode: on";
                     btn.classList.add('active-mode');
                     document.getElementById('bodyRoot').classList.add('viewer-mode-active');
@@ -803,53 +864,55 @@
         function toggleTheme() { document.body.classList.toggle('dark-mode'); }
 
         function renderHeader() {
-            let yearsHTML = `<div class="year-cell">2026</div>`;
-            let monthHTML = '', weekHTML = '';
+            const yearsRow = document.getElementById('yearsRow');
+            const monthsRow = document.getElementById('monthsRow');
+            const weeksRow = document.getElementById('weeksRow');
 
-            const monthsData = [
-                {n:"jan",w:4}, {n:"feb",w:4}, {n:"mar",w:4}, 
-                {n:"apr",w:4}, {n:"mei",w:4}, {n:"jun",w:5}, 
-                {n:"jul",w:4}, {n:"ags",w:4}, {n:"sep",w:5}, 
-                {n:"okt",w:4}, {n:"nov",w:4}, {n:"des",w:4}
-            ];
+            if (viewMode === '1year') {
+                weeksRow.style.display = 'flex';
+                yearsRow.innerHTML = `<div class="year-cell">2026</div>`;
 
-            const monthNames = ["jan", "feb", "mar", "apr", "mei", "jun", "jul", "ags", "sep", "okt", "nov", "des"];
+                const monthNames = ["jan", "feb", "mar", "apr", "mei", "jun", "jul", "ags", "sep", "okt", "nov", "des"];
+                const monthCounts = new Array(12).fill(0);
+                weeks2026.forEach(w => monthCounts[w.monthIndex]++);
 
-            monthsData.forEach(m => {
-                const monthPercent = (m.w / totalWeeksOfYear) * 100;
-                monthHTML += `<div class="month-cell" style="width: ${monthPercent}%;">${m.n}</div>`;
-            });
+                let monthHTML = '';
+                monthCounts.forEach((cnt, idx) => {
+                    if (cnt > 0) {
+                        const monthPercent = (cnt / 52) * 100;
+                        monthHTML += `<div class="month-cell" style="width: ${monthPercent}%;">${monthNames[idx]}</div>`;
+                    }
+                });
 
-            function getFormattedDate(weekNumber) {
-                const year = 2026;
-                const firstDayOfYear = new Date(year, 0, 1);
-                const dayOffset = (1 - firstDayOfYear.getDay() + 7) % 7;
-                const firstMonday = new Date(year, 0, 1 + dayOffset);
+                const todayISO = formatDateISO(new Date());
+                let weekHTML = '';
+                const weekPercent = (1 / 52) * 100;
+
+                weeks2026.forEach(w => {
+                    const isCurr = (todayISO >= w.startDateStr && todayISO <= w.endDateStr);
+                    weekHTML += `<div class="week-cell ${isCurr ? 'current' : ''}" style="width: ${weekPercent}%;" title="minggu ${w.index}: ${w.startDateStr} s/d ${w.endDateStr}">${w.dayLabel}</div>`;
+                });
+
+                monthsRow.innerHTML = monthHTML;
+                weeksRow.innerHTML = weekHTML;
+
+            } else {
+                // 5-Year View (2026 - 2030)
+                weeksRow.style.display = 'none';
+                let yearsHTML = '';
+                let quarterHTML = '';
                 
-                const d = new Date(firstMonday);
-                d.setDate(firstMonday.getDate() + (weekNumber - 1) * 7);
-                
-                const day = d.getDate();
-                const month = monthNames[d.getMonth()];
-                return `${day}-${month}`;
+                for (let y = 0; y < 5; y++) {
+                    const yr = 2026 + y;
+                    yearsHTML += `<div class="year-cell" style="width: 20%;">${yr}</div>`;
+                    for (let q = 1; q <= 4; q++) {
+                        quarterHTML += `<div class="month-cell" style="width: 5%;">q${q}</div>`;
+                    }
+                }
+
+                yearsRow.innerHTML = yearsHTML;
+                monthsRow.innerHTML = quarterHTML;
             }
-
-            const weekPercent = (1 / totalWeeksOfYear) * 100;
-            for (let i = 1; i <= totalWeeksOfYear; i++) {
-                const isCurr = i === currentSystemWeek;
-                const dateLabel = getFormattedDate(i);
-                weekHTML += `<div class="week-cell ${isCurr ? 'current' : ''}" style="width: ${weekPercent}%;" title="minggu ${i}: ${dateLabel}">${dateLabel}</div>`;
-            }
-
-            const gridHeader = document.getElementById('timelineGridHeader');
-            const rowsContainer = document.getElementById('timelineRowsContainer');
-            
-            gridHeader.style.width = '100%';
-            rowsContainer.style.width = '100%';
-
-            document.getElementById('yearsRow').innerHTML = yearsHTML;
-            document.getElementById('monthsRow').innerHTML = monthHTML;
-            document.getElementById('weeksRow').innerHTML = weekHTML;
         }
 
         function getSubtreeRange(index) {
@@ -912,6 +975,30 @@
             renderContent();
         }
 
+        function getTaskPosition(sDateStr, eDateStr) {
+            let tStart, tEnd;
+            if (viewMode === '1year') {
+                tStart = new Date('2026-01-05T00:00:00');
+                tEnd = new Date('2027-01-03T23:59:59');
+            } else {
+                tStart = new Date('2026-01-01T00:00:00');
+                tEnd = new Date('2030-12-31T23:59:59');
+            }
+
+            const totalMs = tEnd - tStart;
+            const taskStart = new Date(sDateStr + 'T00:00:00');
+            const taskEnd = new Date(eDateStr + 'T23:59:59');
+
+            let left = ((taskStart - tStart) / totalMs) * 100;
+            let width = ((taskEnd - taskStart) / totalMs) * 100;
+
+            if (left < 0) { width += left; left = 0; }
+            if (left + width > 100) { width = 100 - left; }
+            if (width < 0.2) width = 0.2;
+
+            return { leftPercent: left, widthPercent: width };
+        }
+
         function renderContent(skipAutoUpdate = false) {
             if (!skipAutoUpdate) {
                 updateParentTimelines();
@@ -970,21 +1057,21 @@
                     </div>
                 `;
 
-                const leftPercent = ((task.startWeek - 1) / totalWeeksOfYear) * 100;
-                const widthPercent = ((task.endWeek - task.startWeek + 1) / totalWeeksOfYear) * 100;
+                const pos = getTaskPosition(task.startDate, task.endDate);
                 
                 let handles = (!isPar && !viewerMode) ? `<div class="resizer left" onmousedown="initAction(event, ${index}, 'resize-left')"></div><div class="resizer right" onmousedown="initAction(event, ${index}, 'resize-right')"></div>` : '';
                 let moveEvent = (!isPar && !viewerMode) ? `onmousedown="initAction(event, ${index}, 'move')"` : '';
 
                 let gridLines = '';
-                for(let w = 1; w <= totalWeeksOfYear; w++) {
-                    gridLines += `<div class="grid-bg-line" style="left: ${((w - 1) / totalWeeksOfYear) * 100}%;"></div>`;
+                const lineCount = (viewMode === '1year') ? 52 : 20;
+                for(let l = 0; l < lineCount; l++) {
+                    gridLines += `<div class="grid-bg-line" style="left: ${(l / lineCount) * 100}%;"></div>`;
                 }
 
                 timelineHTML += `
                     <div class="timeline-row-lane">
                         ${gridLines}
-                        <div class="task-bar ${isPar ? 'parent' : ''} ${task.completed ? 'completed-bar' : ''}" style="left: ${leftPercent}%; width: ${widthPercent}%;">
+                        <div class="task-bar ${isPar ? 'parent' : ''} ${task.completed ? 'completed-bar' : ''}" style="left: ${pos.leftPercent}%; width: ${pos.widthPercent}%;" title="${task.name} (${task.startDate} s/d ${task.endDate})">
                             ${handles}
                             <div class="bar-content" ${moveEvent}>${task.name}</div>
                         </div>
@@ -992,9 +1079,13 @@
                 `;
             });
 
-            const currentWeekPercent = ((currentSystemWeek - 1) / totalWeeksOfYear) * 100;
-            timelineHTML += `<div class="current-week-line" style="left: ${currentWeekPercent}%;"></div>`;
-            
+            // Red Line Indikator Hari Ini
+            const todayStr = formatDateISO(new Date());
+            const posToday = getTaskPosition(todayStr, todayStr);
+            if (posToday.leftPercent >= 0 && posToday.leftPercent <= 100) {
+                timelineHTML += `<div class="current-week-line" style="left: ${posToday.leftPercent}%;"></div>`;
+            }
+
             sidebar.innerHTML = sidebarHTML;
             timeline.innerHTML = timelineHTML;
         }
@@ -1005,11 +1096,13 @@
             if (index > 0 && tasks[index - 1]) {
                 inheritLevel = tasks[index - 1].level;
             }
+            
+            const todayStr = formatDateISO(new Date());
             tasks.splice(index, 0, { 
                 name: "pekerjaan baru", 
                 level: inheritLevel, 
-                startWeek: currentSystemWeek, 
-                endWeek: Math.min(currentSystemWeek + 2, 52), 
+                startDate: todayStr,
+                endDate: addDays(todayStr, 14),
                 notes: "",
                 collapsed: false,
                 completed: false
@@ -1164,8 +1257,8 @@
             groupIndices.forEach(gi => {
                 childrenInitialStates.push({
                     idx: gi,
-                    startWeek: tasks[gi].startWeek,
-                    endWeek: tasks[gi].endWeek
+                    startDate: tasks[gi].startDate,
+                    endDate: tasks[gi].endDate
                 });
             });
 
@@ -1177,44 +1270,35 @@
             if (activeBar === null || viewerMode) return;
             const container = document.getElementById('timelineRowsContainer');
             const containerWidth = container.clientWidth;
-            const pxPerWeek = containerWidth / totalWeeksOfYear;
             
-            const weekShift = Math.round((e.clientX - startMouseX) / pxPerWeek);
+            let daysShift = 0;
+            if (viewMode === '1year') {
+                const pxPerWeek = containerWidth / 52;
+                const weekShift = Math.round((e.clientX - startMouseX) / pxPerWeek);
+                daysShift = weekShift * 7;
+            } else {
+                const pxPerQuarter = containerWidth / 20;
+                const quarterShift = Math.round((e.clientX - startMouseX) / pxPerQuarter);
+                daysShift = quarterShift * 91; // ~1 Kuartal
+            }
 
             const parentInitial = childrenInitialStates.find(s => s.idx === activeBar);
             if (!parentInitial) return;
 
-            const dur = parentInitial.endWeek - parentInitial.startWeek;
-            let ns = parentInitial.startWeek + weekShift;
-            if (ns < 1) ns = 1; 
-            if (ns + dur > totalWeeksOfYear) ns = totalWeeksOfYear - dur;
-            
-            const actualShift = ns - parentInitial.startWeek;
-
             if (actionType === 'move') {
                 childrenInitialStates.forEach(state => {
                     let taskObj = tasks[state.idx];
-                    let taskDur = state.endWeek - state.startWeek;
-                    let newStart = state.startWeek + actualShift;
-                    
-                    if (newStart < 1) newStart = 1;
-                    if (newStart + taskDur > totalWeeksOfYear) newStart = totalWeeksOfYear - taskDur;
-                    
-                    taskObj.startWeek = newStart;
-                    taskObj.endWeek = newStart + taskDur;
+                    taskObj.startDate = addDays(state.startDate, daysShift);
+                    taskObj.endDate = addDays(state.endDate, daysShift);
                 });
             } else if (actionType === 'resize-left') {
                 let task = tasks[activeBar];
-                let ns = parentInitial.startWeek + weekShift;
-                if (ns < 1) ns = 1; 
-                if (ns > task.endWeek) ns = task.endWeek;
-                task.startWeek = ns;
+                let newS = addDays(parentInitial.startDate, daysShift);
+                if (newS <= task.endDate) task.startDate = newS;
             } else if (actionType === 'resize-right') {
                 let task = tasks[activeBar];
-                let ne = parentInitial.endWeek + weekShift;
-                if (ne > totalWeeksOfYear) ne = totalWeeksOfYear; 
-                if (ne < task.startWeek) ne = task.startWeek;
-                task.endWeek = ne;
+                let newE = addDays(parentInitial.endDate, daysShift);
+                if (newE >= task.startDate) task.endDate = newE;
             }
             
             renderContent(true);
@@ -1256,8 +1340,14 @@
                     j++; 
                 }
                 if (children.length > 0) {
-                    tasks[i].startWeek = Math.min(...children.map(c => c.startWeek));
-                    tasks[i].endWeek = Math.max(...children.map(c => c.endWeek));
+                    let minStart = children[0].startDate;
+                    let maxEnd = children[0].endDate;
+                    children.forEach(c => {
+                        if (c.startDate < minStart) minStart = c.startDate;
+                        if (c.endDate > maxEnd) maxEnd = c.endDate;
+                    });
+                    tasks[i].startDate = minStart;
+                    tasks[i].endDate = maxEnd;
                 }
             }
         }
