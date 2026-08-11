@@ -1255,7 +1255,7 @@
                     ? `<span class="toggle-btn" onclick="toggleCollapse(${index}, event)" title="${task.collapsed ? 'buka anak' : 'tutup anak'}">${task.collapsed ? '▶' : '▼'}</span>`
                     : `<span class="toggle-btn-placeholder"></span>`;
 
-                const editableAttr = viewerMode ? '' : `contenteditable="true" onblur="updateTaskNameInline(${index}, this.innerText)" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}"`;
+                const editableAttr = viewerMode ? '' : `contenteditable="true" onblur="commitTaskName(${index}, this)" onkeydown="handleTaskKeydown(event, ${index}, this)"`;
                 
                 const dragAttrs = viewerMode ? '' : `draggable="true" ondragstart="dragStart(event, ${index})" ondragover="dragOver(event, ${index})" ondrop="drop(event, ${index})" ondragleave="dragLeave(event)"`;
                 const handleDisplay = viewerMode ? 'display:none;' : '';
@@ -1588,6 +1588,29 @@
                 }
             }
             return indices;
+        }
+
+        // Fungsi dipanggil saat menekan Enter atau keluar fokus
+        function handleTaskKeydown(event, index, element) {
+            if (event.key === 'Enter') {
+                event.preventDefault(); // Mencegah baris baru (enter ke bawah)
+                element.blur(); // Memicu penyimpanan dengan mencabut fokus secara bersih
+            }
+        }
+
+        function commitTaskName(index, element) {
+            const newName = element.innerText.trim();
+            if (newName !== "" && tasks[index].name !== newName) {
+                tasks[index].name = newName;
+                saveTasksToStorage();
+                // Update teks pada bar chart timeline tanpa merender ulang seluruh sidebar 
+                // agar kursor tidak terlempar keluar saat sedang mengetik
+                const bars = document.querySelectorAll('.bar-content');
+                if (bars[index]) bars[index].innerText = newName;
+            } else if (newName === "") {
+                // Kembalikan ke nama sebelumnya jika dikosongkan
+                element.innerText = tasks[index].name;
+            }
         }
 
         // FUNGSI MEMBERSIHKAN CACHE APLIKASI SECARA TOTAL
