@@ -652,6 +652,7 @@
         
         let isUserTyping = false;
         let isInitialLoadFromSupabase = true;
+        let hasPendingSave = false; // true selama edit lokal belum benar-benar tersimpan ke Supabase
 
         async function resetAppCache() {
             if ('serviceWorker' in navigator) {
@@ -715,6 +716,9 @@
             
             if (isUserTyping && !forceUpdate) return;
 
+            // Jangan load/timpa jika masih ada penyimpanan lokal yang belum selesai dikirim ke server
+            if (hasPendingSave && !forceUpdate) return;
+
             // Jangan load/timpa jika ada task lokal yang baru dibuat dengan ID temporary ('temp_')
             const hasUnsavedLocalTasks = tasks.some(t => String(t.id).startsWith('temp_'));
             if (hasUnsavedLocalTasks && !forceUpdate) return;
@@ -763,10 +767,12 @@
                 statusEl.style.color = "var(--text-color)";
             }
 
+            hasPendingSave = true;
             if (saveTimeout) clearTimeout(saveTimeout);
 
             saveTimeout = setTimeout(async () => {
                 if (!dbClient) {
+                    hasPendingSave = false;
                     if (statusEl) { statusEl.innerText = "saved"; statusEl.style.color = "var(--muted-color)"; }
                     return;
                 }
@@ -816,12 +822,14 @@
                         statusEl.innerText = "error saving";
                         statusEl.style.color = "var(--red-line)";
                     }
+                } finally {
+                    hasPendingSave = false;
                 }
-            }, 1500);
+            }, 500);
         }
 
         setInterval(async () => {
-            if (!isUserTyping && dbClient) {
+            if (!isUserTyping && !hasPendingSave && dbClient) {
                 const hasUnsavedLocalTasks = tasks.some(t => String(t.id).startsWith('temp_'));
                 if (!hasUnsavedLocalTasks) {
                     const prevTasksStr = JSON.stringify(tasks);
@@ -1105,7 +1113,7 @@
                 dbClient.channel('public:tasks')
                     .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, async () => {
                         const hasUnsavedLocalTasks = tasks.some(t => String(t.id).startsWith('temp_'));
-                        if (!isUserTyping && !hasUnsavedLocalTasks) {
+                        if (!isUserTyping && !hasPendingSave && !hasUnsavedLocalTasks) {
                             await loadTasksFromSupabase(false);
                             renderContent(true);
                         }
@@ -1244,7 +1252,9 @@
 
         function renderContent(skipAutoUpdate = false) {
             processHybridTimelineEngine();
-            saveTasksToStorage();
+            if (!skipAutoUpdate) {
+                saveTasksToStorage();
+            }
 
             const sidebar = document.getElementById('sidebarBody');
             const timeline = document.getElementById('timelineRowsContainer');
