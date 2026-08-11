@@ -727,7 +727,7 @@
             if (hasPendingSave && !forceUpdate) return;
 
             // Jangan load/timpa jika ada task lokal yang baru dibuat dengan ID temporary ('temp_')
-            const hasUnsavedLocalTasks = tasks.some(t => String(t.id).startsWith('temp_'));
+            const const hasUnsavedLocalTasks = tasks.some(t => t.id < 0);
             if (hasUnsavedLocalTasks && !forceUpdate) return;
 
             try {
@@ -793,7 +793,7 @@
                     };
                     // Pisahkan: task lama (sudah punya id asli) vs task baru (id masih temp/kosong)
                     // supaya bentuk kolom tiap batch konsisten (Supabase menolak batch dgn kolom campur-campur)
-                    if (t.id && !String(t.id).startsWith('temp_')) {
+                    if (t.id && t.id > 0) {
                         row.id = t.id;
                         existingRows.push(row);
                     } else {
@@ -1417,7 +1417,7 @@
             
             const todayStr = formatDateISO(new Date());
             tasks.splice(index, 0, { 
-                id: 'temp_' + Date.now(), // Berikan ID temporary agar tidak tertimpa polling sebelum sync
+                id: -Date.now(), // Berikan ID temporary agar tidak tertimpa polling sebelum sync
                 name: "pekerjaan baru", 
                 level: inheritLevel, 
                 mode: 'MANUAL',
