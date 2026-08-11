@@ -1,14 +1,19 @@
 {
   "name": "Zen Gantt Chart",
   "short_name": "ZenGantt",
-  "start_url": "./",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#141413",
   "theme_color": "#141413",
   "icons": [
     {
-      "src": "https://raw.githubusercontent.com/tomoxyo157/custom-gantt-app/4ba018d3eba024c6c4e1aefe1f007789ba037e6f/black.png",
+      "src": "https://raw.githubusercontent.com/tomoxyo157/custom-gantt-app/4ba018d3eba024c6c4e1aefe1f007789ba037e6f/white.png",
       "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://raw.githubusercontent.com/tomoxyo157/custom-gantt-app/4ba018d3eba024c6c4e1aefe1f007789ba037e6f/black.png",
+      "sizes": "512x512",
       "type": "image/png"
     }
   ]
