@@ -1252,7 +1252,7 @@
             let timelineHTML = '';
 
             tasks.forEach((task, index) => {
-                // Jika leluhurnya ditutup (collapsed), maka baris disembunyikan dari sidebar
+                // Jika leluhurnya ditutup (collapsed), maka baris disembunyikan total baik di sidebar & timeline
                 if (isAncestorCollapsed(index)) return;
 
                 const indent = Math.min(task.level, 6) * 14;
@@ -1280,7 +1280,7 @@
                     ? `<span class="conflict-tag" title="Child melebihi target induk!">KONFLIK</span>`
                     : '';
 
-                // Baris sidebar selalu tampil, tapi jika hidden/invisible (ala Photoshop layer off), diberi kelas layer-hidden (redup)
+                // Sidebar tetap tampil, jika hidden/invisible diberi style .layer-hidden (redup)
                 sidebarHTML += `
                     <div class="task-row-container">
                         ${addTriggerHTML}
@@ -1306,34 +1306,40 @@
                     </div>
                 `;
 
-                // Jika task atau leluhurnya disembunyikan matanya (hidden), bar di timeline tidak dirender (invisible seperti layer Photoshop tanpa mata)
-                if (effectivelyHidden) return;
-
-                const pos = getTaskPosition(task.startDate, task.endDate);
-                
-                let handles = (!isPar && !viewerMode) || (isPar && task.mode === 'MANUAL' && !viewerMode) ? `<div class="resizer left" onmousedown="initAction(event, ${index}, 'resize-left')"></div><div class="resizer right" onmousedown="initAction(event, ${index}, 'resize-right')"></div>` : '';
-                let moveEvent = (!isPar && !viewerMode) || (isPar && task.mode === 'MANUAL' && !viewerMode) ? `onmousedown="initAction(event, ${index}, 'move')"` : '';
-
+                // Garis/Lajur timeline SELALU dirender agar sinkron dengan sidebar!
                 let gridLines = '';
                 const lineCount = (viewMode === '1year') ? 52 : 20;
                 for(let l = 0; l < lineCount; l++) {
                     gridLines += `<div class="grid-bg-line" style="left: ${(l / lineCount) * 100}%;"></div>`;
                 }
 
-                let ghostBarHTML = '';
-                if (isPar && task.mode === 'MANUAL' && task.calculatedStart && task.calculatedEnd) {
-                    const posActual = getTaskPosition(task.calculatedStart, task.calculatedEnd);
-                    ghostBarHTML = `<div class="ghost-actual-bar" style="left: ${posActual.leftPercent}%; width: ${posActual.widthPercent}%;" title="Rentang Child Riil: ${task.calculatedStart} s/d ${task.calculatedEnd}"></div>`;
-                }
+                // Hanya render elemen Batang (Bar) & Ghost Bar jika visibilitas aktif (!effectivelyHidden)
+                let barHTML = '';
+                if (!effectivelyHidden) {
+                    const pos = getTaskPosition(task.startDate, task.endDate);
+                    
+                    let handles = (!isPar && !viewerMode) || (isPar && task.mode === 'MANUAL' && !viewerMode) ? `<div class="resizer left" onmousedown="initAction(event, ${index}, 'resize-left')"></div><div class="resizer right" onmousedown="initAction(event, ${index}, 'resize-right')"></div>` : '';
+                    let moveEvent = (!isPar && !viewerMode) || (isPar && task.mode === 'MANUAL' && !viewerMode) ? `onmousedown="initAction(event, ${index}, 'move')"` : '';
 
-                timelineHTML += `
-                    <div class="timeline-row-lane">
-                        ${gridLines}
+                    let ghostBarHTML = '';
+                    if (isPar && task.mode === 'MANUAL' && task.calculatedStart && task.calculatedEnd) {
+                        const posActual = getTaskPosition(task.calculatedStart, task.calculatedEnd);
+                        ghostBarHTML = `<div class="ghost-actual-bar" style="left: ${posActual.leftPercent}%; width: ${posActual.widthPercent}%;" title="Rentang Child Riil: ${task.calculatedStart} s/d ${task.calculatedEnd}"></div>`;
+                    }
+
+                    barHTML = `
                         ${ghostBarHTML}
                         <div class="task-bar ${isPar ? 'parent' : ''} ${task.hasConflict ? 'conflict-bar' : ''} ${task.completed ? 'completed-bar' : ''}" style="left: ${pos.leftPercent}%; width: ${pos.widthPercent}%;" title="${task.name} (${task.startDate} s/d ${task.endDate})">
                             ${handles}
                             <div class="bar-content" ${moveEvent}>${task.name}</div>
                         </div>
+                    `;
+                }
+
+                timelineHTML += `
+                    <div class="timeline-row-lane">
+                        ${gridLines}
+                        ${barHTML}
                     </div>
                 `;
             });
