@@ -31,7 +31,6 @@
             --line-color: rgba(216, 211, 200, 0.6);
             --sidebar-width: 380px;
             --row-height: 28px;
-            --header-height: 54px;
             --shadow-md: 0 8px 24px rgba(0,0,0,0.06);
             --red-line: #e63946;
             --conflict-color: #dc2626;
@@ -166,6 +165,8 @@
         }
         .btn-header:hover { background: var(--border-color); }
         .btn-header.active-mode { background: var(--text-color); color: var(--bg-color); border-color: var(--text-color); }
+        .btn-header.warning { border-color: #ff9f43; color: #ff9f43; }
+        .btn-header.warning:hover { background: #ff9f43; color: #fff; }
 
         .year-selector-group {
             display: flex;
@@ -219,20 +220,11 @@
             z-index: 10;
         }
 
-        /* PERBAIKAN PRESISI HEADER SIDEBAR & TIMELINE HEADER */
         .sidebar-header {
-            height: var(--header-height);
+            height: 54px;
             border-bottom: 1px solid var(--border-color);
             flex-shrink: 0;
             background: var(--bg-color);
-            display: flex;
-            align-items: center;
-            padding: 0 14px;
-            font-weight: 600;
-            font-size: 0.85rem;
-            color: var(--muted-color);
-            letter-spacing: 0.5px;
-            box-sizing: border-box;
         }
 
         .sidebar-body {
@@ -251,11 +243,7 @@
         }
 
         /* Task Row & Drag States */
-        .task-row-container { 
-            position: relative;
-            height: var(--row-height);
-            box-sizing: border-box;
-        }
+        .task-row-container { position: relative; }
 
         .insert-trigger {
             height: 6px;
@@ -309,7 +297,6 @@
             background: var(--card-bg);
             position: relative;
             user-select: none;
-            box-sizing: border-box;
         }
 
         .task-row.layer-hidden { opacity: 0.35; }
@@ -415,7 +402,7 @@
         .action-btn.del:hover { color: #ff3b30; }
         .action-btn.check.active { color: #2a9d8f; font-weight: bold; }
 
-        /* Timeline Area & Header Grid Synchronized */
+        /* Timeline Area */
         .gantt-timeline {
             flex: 1;
             overflow-x: auto;
@@ -426,73 +413,14 @@
         }
         .gantt-timeline::-webkit-scrollbar { display: none; }
         
-        .timeline-grid-header { 
-            display: flex; 
-            flex-direction: column; 
-            position: sticky; 
-            top: 0; 
-            z-index: 8; 
-            background: var(--card-bg); 
-            width: 100%; 
-            min-width: 1000px;
-            flex-shrink: 0;
-            height: var(--header-height);
-            box-sizing: border-box;
-        }
+        .timeline-grid-header { display: flex; flex-direction: column; position: sticky; top: 0; z-index: 8; background: var(--card-bg); width: 100%; min-width: 100%; height: 54px; }
         
-        .years-row { 
-            display: flex; 
-            flex-wrap: nowrap;
-            height: 20px; 
-            border-bottom: 1px solid var(--border-color); 
-            background: var(--bg-color); 
-            width: 100%; 
-            flex-shrink: 0;
-            box-sizing: border-box;
-        }
-        .year-cell { 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            font-size: 0.8rem; 
-            font-weight: 600; 
-            color: var(--text-color); 
-            border-right: 1px solid var(--border-color); 
-            box-sizing: border-box;
-            flex-shrink: 0;
-        }
+        .years-row { display: flex; height: 20px; border-bottom: 1px solid var(--border-color); background: var(--bg-color); width: 100%; }
+        .year-cell { display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 600; color: var(--text-color); border-right: 1px solid var(--border-color); width: 100%; }
 
-        .months-row { 
-            display: flex; 
-            flex-wrap: nowrap;
-            height: 17px; 
-            border-bottom: 1px solid var(--border-color); 
-            width: 100%; 
-            flex-shrink: 0;
-            box-sizing: border-box;
-        }
-        .month-cell { 
-            border-right: 1px solid var(--border-color); 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            font-size: 0.72rem; 
-            color: var(--muted-color); 
-            box-sizing: border-box;
-            flex-shrink: 0;
-            overflow: hidden;
-            white-space: nowrap;
-        }
+        .months-row, .weeks-row { display: flex; height: 17px; border-bottom: 1px solid var(--border-color); width: 100%; }
+        .month-cell { border-right: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; font-size: 0.72rem; color: var(--muted-color); }
         
-        .weeks-row { 
-            display: flex; 
-            flex-wrap: nowrap;
-            height: 17px; 
-            border-bottom: 1px solid var(--border-color);
-            width: 100%; 
-            flex-shrink: 0;
-            box-sizing: border-box;
-        }
         .week-cell { 
             border-right: 1px solid var(--border-color); 
             display: flex; 
@@ -503,28 +431,12 @@
             opacity: 0.75;
             overflow: hidden;
             white-space: nowrap;
-            box-sizing: border-box;
-            flex-shrink: 0;
         }
         .week-cell.current { font-weight: bold; color: var(--red-line); opacity: 1; }
         .week-cell:hover { background: var(--border-color); opacity: 1; z-index: 5; }
 
-        .timeline-rows-container { 
-            position: relative; 
-            width: 100%; 
-            min-width: 1000px; 
-            min-height: calc(100% - var(--header-height)); 
-            flex: 1;
-        }
-        .timeline-row-lane { 
-            height: var(--row-height); 
-            border-bottom: 1px solid var(--border-color); 
-            position: relative; 
-            display: flex; 
-            align-items: center; 
-            width: 100%; 
-            box-sizing: border-box;
-        }
+        .timeline-rows-container { position: relative; width: 100%; min-width: 100%; min-height: calc(100% - 54px); }
+        .timeline-row-lane { height: var(--row-height); border-bottom: 1px solid var(--border-color); position: relative; display: flex; align-items: center; width: 100%; }
 
         .grid-bg-line { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line-color); pointer-events: none; }
 
@@ -643,15 +555,6 @@
 </head>
 <body class="dark-mode" id="bodyRoot">
 
-    <!-- Tombol Reset Cache / Force Refresh -->
-    <button 
-        id="fix-data-btn" 
-        onclick="resetAppCache()" 
-        style="position: fixed; bottom: 10px; right: 10px; z-index: 9999; padding: 5px 10px; font-size: 10px; background: #ff4d4d; color: white; border: none; border-radius: 4px; cursor: pointer; opacity: 0.6;"
-        title="Klik jika data di perangkat lain lambat memperbarui">
-        Refresh Data (Fix)
-    </button>
-
     <!-- Screen PIN Authentication Overlay -->
     <div class="pin-overlay" id="pinOverlay">
         <div class="pin-card">
@@ -671,6 +574,7 @@
             <span class="save-status-badge" id="saveStatus">saved</span>
         </div>
         <div class="header-controls">
+            <button class="btn-header warning" onclick="resetAppCache()" title="Paksa muat ulang data dari server">refresh data (fix)</button>
             <div class="year-selector-group">
                 <button class="btn-header" onclick="navigateYear(-1)">◄</button>
                 <input type="number" id="yearPicker" class="year-input" min="2000" max="2100" value="2026" onchange="setYear(parseInt(this.value))">
@@ -687,23 +591,23 @@
     </header>
 
     <!-- Main Gantt Area -->
-    <main class="gantt-wrapper">
-        <aside class="gantt-sidebar" id="sidebarContainer" role="complementary">
-            <div class="sidebar-header">daftar pekerjaan</div>
+    <div class="gantt-wrapper">
+        <div class="gantt-sidebar" id="sidebarContainer">
+            <div class="sidebar-header"></div>
             <div class="sidebar-body" id="sidebarBody"></div>
-        </aside>
+        </div>
 
-        <div class="sidebar-resizer" id="sidebarResizer" role="separator"></div>
+        <div class="sidebar-resizer" id="sidebarResizer"></div>
 
-        <article class="gantt-timeline" id="timelineContainer" role="main">
-            <header class="timeline-grid-header" id="timelineGridHeader">
+        <div class="gantt-timeline" id="timelineContainer">
+            <div class="timeline-grid-header" id="timelineGridHeader">
                 <div class="years-row" id="yearsRow"></div>
                 <div class="months-row" id="monthsRow"></div>
                 <div class="weeks-row" id="weeksRow"></div>
-            </header>
-            <section class="timeline-rows-container" id="timelineRowsContainer"></section>
-        </article>
-    </main>
+            </div>
+            <div class="timeline-rows-container" id="timelineRowsContainer"></div>
+        </div>
+    </div>
 
     <!-- Modal Catatan -->
     <div class="modal-overlay" id="notesModal" onclick="closeModalOnOverlay(event)">
@@ -721,7 +625,6 @@
     </div>
 
     <script>
-        // Service Worker Registration
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js')
@@ -745,77 +648,28 @@
         let activeBar = null, actionType = null, startMouseX = 0;
         let childrenInitialStates = [];
         let viewerMode = false;
+        let saveTimeout = null; 
+        
+        // Flag pengaman agar render ulang tidak mengganggu user yang sedang mengetik nama task
         let isUserTyping = false;
+        let isInitialLoadFromSupabase = true;
 
-        // --- OFFLINE SYNC ENGINE (QUEUE SYSTEM) ---
-        const SyncEngine = {
-            queue: JSON.parse(localStorage.getItem('zen_sync_queue') || '[]'),
-
-            push(action, data) {
-                this.queue.push({ action, data, ts: Date.now() });
-                localStorage.setItem('zen_sync_queue', JSON.stringify(this.queue));
-                this.process();
-            },
-
-            async process() {
-                if (!dbClient || this.queue.length === 0) return;
-                const statusEl = document.getElementById('saveStatus');
-                if (statusEl) {
-                    statusEl.innerText = "syncing...";
-                    statusEl.style.color = "var(--text-color)";
-                }
-
+        // Force Refresh App & Cache Busting
+        async function resetAppCache() {
+            if ('serviceWorker' in navigator) {
                 try {
-                    const payload = tasks.map((t, idx) => ({
-                        id: t.id,
-                        name: t.name,
-                        level: t.level,
-                        mode: t.mode || 'MANUAL',
-                        start_date: t.startDate,
-                        end_date: t.endDate,
-                        notes: t.notes || "",
-                        collapsed: t.collapsed || false,
-                        completed: t.completed || false,
-                        hidden: t.hidden || false,
-                        sort_order: idx
-                    }));
-
-                    const { data, error } = await dbClient
-                        .from('tasks')
-                        .upsert(payload, { onConflict: 'id' })
-                        .select();
-
-                    if (!error && data) {
-                        data.forEach((savedItem, sIdx) => {
-                            if (tasks[sIdx] && !tasks[sIdx].id) {
-                                tasks[sIdx].id = savedItem.id;
-                            }
-                        });
-                        localStorage.setItem('zen_gantt_tasks_v3', JSON.stringify(tasks));
-                        this.queue.shift();
-                        localStorage.setItem('zen_sync_queue', JSON.stringify(this.queue));
-                        
-                        if (statusEl) {
-                            statusEl.innerText = "saved";
-                            statusEl.style.color = "var(--muted-color)";
-                        }
-                        if (this.queue.length > 0) {
-                            this.process();
-                        }
-                    }
-                } catch (e) {
-                    console.warn("Sync tertunda, koneksi offline:", e);
-                    if (statusEl) {
-                        statusEl.innerText = "offline (saved locally)";
-                        statusEl.style.color = "var(--red-line)";
-                    }
-                }
+                    const regs = await navigator.serviceWorker.getRegistrations();
+                    for (let r of regs) { await r.unregister(); }
+                } catch(e) { console.log(e); }
             }
-        };
-
-        window.addEventListener('online', () => {
-            SyncEngine.process();
-        });
+            if (window.caches) {
+                try {
+                    const keys = await caches.keys();
+                    for (let k of keys) { await caches.delete(k); }
+                } catch(e) { console.log(e); }
+            }
+            window.location.reload(true);
+        }
 
         function formatDateISO(d) {
             const year = d.getFullYear();
@@ -830,7 +684,6 @@
             return formatDateISO(d);
         }
 
-        // --- FUNGSI MENDAPATKAN MINGGU TAHUNAN ---
         function getYearWeeks(year) {
             const weeks = [];
             let currentMonday = new Date(year, 0, 1);
@@ -859,8 +712,13 @@
 
         let tasks = JSON.parse(localStorage.getItem('zen_gantt_tasks_v3')) || [];
 
+        // LOAD DATA DARI SUPABASE DENGAN PROTEKSI LOCAL OVERWRITE
         async function loadTasksFromSupabase(forceUpdate = false) {
             if (!dbClient) return;
+            
+            // Jangan load data dari DB jika user sedang mengetik (kecuali dipaksa)
+            if (isUserTyping && !forceUpdate) return;
+
             try {
                 const { data, error } = await dbClient
                     .from('tasks')
@@ -868,34 +726,111 @@
                     .order('sort_order', { ascending: true });
 
                 if (!error && data) {
-                    if (SyncEngine.queue.length === 0 || forceUpdate) {
-                        tasks = data.map(t => ({
-                            id: t.id,
-                            name: t.name,
-                            level: t.level,
-                            mode: t.mode || 'MANUAL',
-                            startDate: t.start_date || `${selectedYear}-01-05`,
-                            endDate: t.end_date || `${selectedYear}-01-25`,
-                            calculatedStart: null,
-                            calculatedEnd: null,
-                            hasConflict: false,
-                            notes: t.notes || "",
-                            collapsed: t.collapsed || false,
-                            completed: t.completed || false,
-                            hidden: t.hidden || false
-                        }));
+                    const fetchedTasks = data.map(t => ({
+                        id: t.id,
+                        name: t.name,
+                        level: t.level,
+                        mode: t.mode || 'MANUAL',
+                        startDate: t.start_date || `${selectedYear}-01-05`,
+                        endDate: t.end_date || `${selectedYear}-01-25`,
+                        calculatedStart: null,
+                        calculatedEnd: null,
+                        hasConflict: false,
+                        notes: t.notes || "",
+                        collapsed: t.collapsed || false,
+                        completed: t.completed || false,
+                        hidden: t.hidden || false
+                    }));
+
+                    // Cek jika ini inisial load, force update, atau jika ada perubahan pada string data
+                    if (isInitialLoadFromSupabase || forceUpdate || JSON.stringify(tasks) !== JSON.stringify(fetchedTasks)) {
+                        tasks = fetchedTasks;
                         localStorage.setItem('zen_gantt_tasks_v3', JSON.stringify(tasks));
                     }
                 }
             } catch (e) {
                 console.error("Gagal load dari Supabase:", e);
+            } finally {
+                isInitialLoadFromSupabase = false;
             }
         }
 
+        // SISTEM AUTO-SAVE DENGAN DEBOUNCE (JEDA 1.5 DETIK) & STATUS INDIKATOR
         function saveTasksToStorage() {
             localStorage.setItem('zen_gantt_tasks_v3', JSON.stringify(tasks));
-            SyncEngine.push('UPDATE_ALL', tasks);
+            
+            const statusEl = document.getElementById('saveStatus');
+            if (statusEl) {
+                statusEl.innerText = "saving...";
+                statusEl.style.color = "var(--text-color)";
+            }
+
+            if (saveTimeout) clearTimeout(saveTimeout);
+
+            saveTimeout = setTimeout(async () => {
+                if (!dbClient) {
+                    if (statusEl) { statusEl.innerText = "saved"; statusEl.style.color = "var(--muted-color)"; }
+                    return;
+                }
+
+                try {
+                    const payload = tasks.map((t, idx) => {
+                        const row = {
+                            name: t.name,
+                            level: t.level,
+                            mode: t.mode || 'MANUAL',
+                            start_date: t.startDate,
+                            end_date: t.endDate,
+                            notes: t.notes || "",
+                            collapsed: t.collapsed || false,
+                            completed: t.completed || false,
+                            hidden: t.hidden || false,
+                            sort_order: idx
+                        };
+                        if (t.id) {
+                            row.id = t.id;
+                        }
+                        return row;
+                    });
+
+                    const { data, error } = await dbClient
+                        .from('tasks')
+                        .upsert(payload, { onConflict: 'id' })
+                        .select();
+
+                    if (!error && data) {
+                        data.forEach((savedItem, sIdx) => {
+                            if (tasks[sIdx] && !tasks[sIdx].id) {
+                                tasks[sIdx].id = savedItem.id;
+                            }
+                        });
+                        localStorage.setItem('zen_gantt_tasks_v3', JSON.stringify(tasks));
+                    }
+
+                    if (statusEl) {
+                        statusEl.innerText = "saved";
+                        statusEl.style.color = "var(--muted-color)";
+                    }
+                } catch (e) {
+                    console.error("Gagal simpan ke Supabase:", e);
+                    if (statusEl) {
+                        statusEl.innerText = "error saving";
+                        statusEl.style.color = "var(--red-line)";
+                    }
+                }
+            }, 1500);
         }
+
+        // FALLBACK AUTO-POLLING TIAP 3 DETIK (Abaikan jika user sedang mengetik)
+        setInterval(async () => {
+            if (!isUserTyping && dbClient) {
+                const prevTasksStr = JSON.stringify(tasks);
+                await loadTasksFromSupabase(false);
+                if (prevTasksStr !== JSON.stringify(tasks)) {
+                    renderContent(true);
+                }
+            }
+        }, 3000);
 
         function processHybridTimelineEngine() {
             if (tasks.length === 0) return;
@@ -1164,43 +1099,31 @@
             renderHeader();
             await loadTasksFromSupabase(true);
             renderContent();
-            SyncEngine.process();
 
+            // REALTIME SUBSCRIPTION
             if (dbClient) {
                 dbClient.channel('public:tasks')
-                    .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, async (payload) => {
-                        console.log('Perubahan terdeteksi dari perangkat lain!', payload);
-                        await loadTasksFromSupabase(true);
-                        renderContent(true);
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, async () => {
+                        if (!isUserTyping) {
+                            await loadTasksFromSupabase(false);
+                            renderContent(true);
+                        }
                     })
                     .subscribe();
-
-                setInterval(() => {
-                    if (!document.hidden && SyncEngine.queue.length === 0 && !isUserTyping) {
-                        loadTasksFromSupabase(false).then(() => {
-                            renderContent(true);
-                        });
-                    }
-                }, 3000);
             }
         }
 
         function toggleTheme() { document.body.classList.toggle('dark-mode'); }
 
-        /* --- FUNGSI UTAMA RENDER HEADER TIMELINE (DIPERBAIKI UNTUK SINKRONISASI TOTAL) --- */
         function renderHeader() {
             const yearsRow = document.getElementById('yearsRow');
             const monthsRow = document.getElementById('monthsRow');
             const weeksRow = document.getElementById('weeksRow');
 
-            if (!yearsRow || !monthsRow || !weeksRow) return;
-
             if (viewMode === '1year') {
-                document.documentElement.style.setProperty('--header-height', '54px');
                 weeksRow.style.display = 'flex';
-                yearsRow.innerHTML = `<div class="year-cell" style="width: 100%;">${selectedYear}</div>`;
+                yearsRow.innerHTML = `<div class="year-cell">${selectedYear}</div>`;
 
-                // Render Bulan (Jan, Feb, dst)
                 const monthNames = ["jan", "feb", "mar", "apr", "mei", "jun", "jul", "ags", "sep", "okt", "nov", "des"];
                 const weeks = getYearWeeks(selectedYear);
                 const monthCounts = new Array(12).fill(0);
@@ -1214,7 +1137,6 @@
                     }
                 });
 
-                // Render Tanggal-tanggal Senin / Minggu
                 const todayISO = formatDateISO(new Date());
                 let weekHTML = '';
                 const weekPercent = (1 / 52) * 100;
@@ -1228,8 +1150,6 @@
                 weeksRow.innerHTML = weekHTML;
 
             } else {
-                // Mode 5 Years (Kuartal)
-                document.documentElement.style.setProperty('--header-height', '37px');
                 weeksRow.style.display = 'none';
                 let yearsHTML = '';
                 let quarterHTML = '';
@@ -1244,7 +1164,6 @@
 
                 yearsRow.innerHTML = yearsHTML;
                 monthsRow.innerHTML = quarterHTML;
-                weeksRow.innerHTML = '';
             }
         }
 
@@ -1323,14 +1242,8 @@
         }
 
         function renderContent(skipAutoUpdate = false) {
-            if (isUserTyping || (document.activeElement && document.activeElement.classList.contains('task-name-text'))) {
-                return;
-            }
-
             processHybridTimelineEngine();
-            if (!skipAutoUpdate) {
-                saveTasksToStorage();
-            }
+            saveTasksToStorage();
 
             const sidebar = document.getElementById('sidebarBody');
             const timeline = document.getElementById('timelineRowsContainer');
@@ -1355,7 +1268,12 @@
                     ? `<span class="toggle-btn" onclick="toggleCollapse(${index}, event)" title="${task.collapsed ? 'buka anak' : 'tutup anak'}">${task.collapsed ? '▶' : '▼'}</span>`
                     : `<span class="toggle-btn-placeholder"></span>`;
 
-                const editableAttr = viewerMode ? '' : `contenteditable="true" onblur="commitTaskName(${index}, this)" onkeydown="handleTaskKeydown(event, ${index}, this)"`;
+                // EDITING LOGIC DENGAN KEYDOWN & isUserTyping
+                const editableAttr = viewerMode ? '' : `
+                    contenteditable="true" 
+                    onfocus="isUserTyping = true;" 
+                    onblur="commitTaskName(${index}, this.innerText); isUserTyping = false;" 
+                    onkeydown="handleTaskKeydown(event, ${index}, this)"`;
                 
                 const dragAttrs = viewerMode ? '' : `draggable="true" ondragstart="dragStart(event, ${index})" ondragover="dragOver(event, ${index})" ondrop="drop(event, ${index})" ondragleave="dragLeave(event)"`;
                 const handleDisplay = viewerMode ? 'display:none;' : '';
@@ -1468,6 +1386,24 @@
             });
             sanitizeHierarchy();
             renderContent();
+        }
+
+        // FUNGSI UNTUK MENG-HANDLE NAMA TASK KETIKA ENTER DITEKAN
+        function handleTaskKeydown(event, index, el) {
+            if (event.key === 'Enter') {
+                event.preventDefault(); // Cegah buat baris baru
+                el.blur(); // Memicu onblur yang akan memanggil commitTaskName
+            }
+        }
+
+        // FUNGSI UNTUK MENYIMPAN NAMA TASK
+        function commitTaskName(index, newName) {
+            if (newName.trim() !== "") {
+                tasks[index].name = newName.trim();
+                saveTasksToStorage();
+                const bars = document.querySelectorAll('.bar-content');
+                if (bars[index]) bars[index].innerText = newName.trim();
+            }
         }
 
         function openNotes(index) {
@@ -1593,6 +1529,7 @@
             draggedTaskIndex = null;
         }
 
+        // FITUR DRAG (GESER) & RESIZE BATANG TIMELINE
         function initAction(e, index, action) {
             if (viewerMode) return;
             e.preventDefault();
@@ -1622,6 +1559,7 @@
             const containerWidth = container.clientWidth;
             
             let daysShift = 0;
+            // Mode 1 tahun = geser per minggu, Mode 5 tahun = geser per kuartal (91 hari)
             if (viewMode === '1year') {
                 const pxPerWeek = containerWidth / 52;
                 const weekShift = Math.round((e.clientX - startMouseX) / pxPerWeek);
@@ -1679,49 +1617,6 @@
                 }
             }
             return indices;
-        }
-
-        function handleTaskKeydown(event, index, element) {
-            isUserTyping = true;
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                isUserTyping = false;
-                element.blur();
-            }
-        }
-
-        function commitTaskName(index, element) {
-            isUserTyping = false;
-            const newName = element.innerText.trim();
-            if (newName !== "" && tasks[index].name !== newName) {
-                tasks[index].name = newName;
-                saveTasksToStorage();
-                const bars = document.querySelectorAll('.bar-content');
-                if (bars[index]) bars[index].innerText = newName;
-            } else if (newName === "") {
-                element.innerText = tasks[index].name;
-            }
-        }
-
-        async function resetAppCache() {
-            console.log("Memulai proses pembersihan cache...");
-            
-            if ('serviceWorker' in navigator) {
-                const registrations = await navigator.serviceWorker.getRegistrations();
-                for (let registration of registrations) {
-                    await registration.unregister();
-                }
-            }
-
-            if ('caches' in window) {
-                const cacheNames = await caches.keys();
-                for (let name of cacheNames) {
-                    await caches.delete(name);
-                }
-            }
-
-            alert("Cache dibersihkan. Aplikasi akan dimuat ulang.");
-            window.location.reload(true);
         }
 
         window.onload = initGantt;
