@@ -774,7 +774,11 @@
             }
 
             try {
-                const payload = tasks.map((t, idx) => {
+                const existingRows = [];
+                const newRows = [];
+                const newRowIndices = [];
+
+                tasks.forEach((t, idx) => {
                     const row = {
                         name: t.name,
                         level: t.level,
@@ -787,26 +791,39 @@
                         hidden: t.hidden || false,
                         sort_order: idx
                     };
-                    // Hanya masukkan id jika bukan temp id
+                    // Pisahkan: task lama (sudah punya id asli) vs task baru (id masih temp/kosong)
+                    // supaya bentuk kolom tiap batch konsisten (Supabase menolak batch dgn kolom campur-campur)
                     if (t.id && !String(t.id).startsWith('temp_')) {
                         row.id = t.id;
+                        existingRows.push(row);
+                    } else {
+                        newRows.push(row);
+                        newRowIndices.push(idx);
                     }
-                    return row;
                 });
 
-                const { data, error } = await dbClient
-                    .from('tasks')
-                    .upsert(payload, { onConflict: 'id' })
-                    .select();
-
-                if (!error && data) {
-                    data.forEach((savedItem, sIdx) => {
-                        if (tasks[sIdx] && (String(tasks[sIdx].id).startsWith('temp_') || !tasks[sIdx].id)) {
-                            tasks[sIdx].id = savedItem.id;
-                        }
-                    });
-                    localStorage.setItem('zen_gantt_tasks_v3', JSON.stringify(tasks));
+                // 1. Upsert task-task yang sudah ada di server
+                if (existingRows.length > 0) {
+                    const { error: upErr } = await dbClient
+                        .from('tasks')
+                        .upsert(existingRows, { onConflict: 'id' });
+                    if (upErr) throw upErr;
                 }
+
+                // 2. Insert task-task baru secara terpisah (biar Supabase yg generate id-nya)
+                if (newRows.length > 0) {
+                    const { data: insData, error: insErr } = await dbClient
+                        .from('tasks')
+                        .insert(newRows)
+                        .select();
+                    if (insErr) throw insErr;
+                    insData.forEach((savedItem, i) => {
+                        const taskIdx = newRowIndices[i];
+                        if (tasks[taskIdx]) tasks[taskIdx].id = savedItem.id;
+                    });
+                }
+
+                localStorage.setItem('zen_gantt_tasks_v3', JSON.stringify(tasks));
 
                 if (statusEl) {
                     statusEl.innerText = "saved";
