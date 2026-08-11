@@ -31,6 +31,7 @@
             --line-color: rgba(216, 211, 200, 0.6);
             --sidebar-width: 380px;
             --row-height: 28px;
+            --header-height: 54px;
             --shadow-md: 0 8px 24px rgba(0,0,0,0.06);
             --red-line: #e63946;
             --conflict-color: #dc2626;
@@ -218,8 +219,9 @@
             z-index: 10;
         }
 
+        /* PERBAIKAN PRESISI HEADER SIDEBAR & TIMELINE HEADER */
         .sidebar-header {
-            height: 54px;
+            height: var(--header-height);
             border-bottom: 1px solid var(--border-color);
             flex-shrink: 0;
             background: var(--bg-color);
@@ -230,6 +232,7 @@
             font-size: 0.85rem;
             color: var(--muted-color);
             letter-spacing: 0.5px;
+            box-sizing: border-box;
         }
 
         .sidebar-body {
@@ -248,7 +251,11 @@
         }
 
         /* Task Row & Drag States */
-        .task-row-container { position: relative; }
+        .task-row-container { 
+            position: relative;
+            height: var(--row-height);
+            box-sizing: border-box;
+        }
 
         .insert-trigger {
             height: 6px;
@@ -302,6 +309,7 @@
             background: var(--card-bg);
             position: relative;
             user-select: none;
+            box-sizing: border-box;
         }
 
         .task-row.layer-hidden { opacity: 0.35; }
@@ -407,7 +415,7 @@
         .action-btn.del:hover { color: #ff3b30; }
         .action-btn.check.active { color: #2a9d8f; font-weight: bold; }
 
-        /* Timeline Area & Header Grid Fixes */
+        /* Timeline Area & Header Grid Synchronized */
         .gantt-timeline {
             flex: 1;
             overflow-x: auto;
@@ -426,9 +434,10 @@
             z-index: 8; 
             background: var(--card-bg); 
             width: 100%; 
-            min-width: 100%; 
+            min-width: 1000px;
             flex-shrink: 0;
-            border-bottom: 1px solid var(--border-color);
+            height: var(--header-height);
+            box-sizing: border-box;
         }
         
         .years-row { 
@@ -439,6 +448,7 @@
             background: var(--bg-color); 
             width: 100%; 
             flex-shrink: 0;
+            box-sizing: border-box;
         }
         .year-cell { 
             display: flex; 
@@ -459,6 +469,7 @@
             border-bottom: 1px solid var(--border-color); 
             width: 100%; 
             flex-shrink: 0;
+            box-sizing: border-box;
         }
         .month-cell { 
             border-right: 1px solid var(--border-color); 
@@ -477,8 +488,10 @@
             display: flex; 
             flex-wrap: nowrap;
             height: 17px; 
+            border-bottom: 1px solid var(--border-color);
             width: 100%; 
             flex-shrink: 0;
+            box-sizing: border-box;
         }
         .week-cell { 
             border-right: 1px solid var(--border-color); 
@@ -499,11 +512,19 @@
         .timeline-rows-container { 
             position: relative; 
             width: 100%; 
-            min-width: 100%; 
-            min-height: calc(100% - 54px); 
+            min-width: 1000px; 
+            min-height: calc(100% - var(--header-height)); 
             flex: 1;
         }
-        .timeline-row-lane { height: var(--row-height); border-bottom: 1px solid var(--border-color); position: relative; display: flex; align-items: center; width: 100%; }
+        .timeline-row-lane { 
+            height: var(--row-height); 
+            border-bottom: 1px solid var(--border-color); 
+            position: relative; 
+            display: flex; 
+            align-items: center; 
+            width: 100%; 
+            box-sizing: border-box;
+        }
 
         .grid-bg-line { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line-color); pointer-events: none; }
 
@@ -724,7 +745,7 @@
         let activeBar = null, actionType = null, startMouseX = 0;
         let childrenInitialStates = [];
         let viewerMode = false;
-        let isUserTyping = false; // Pengaman saat mengetik agar tidak re-render mendadak
+        let isUserTyping = false;
 
         // --- OFFLINE SYNC ENGINE (QUEUE SYSTEM) ---
         const SyncEngine = {
@@ -809,6 +830,7 @@
             return formatDateISO(d);
         }
 
+        // --- FUNGSI MENDAPATKAN MINGGU TAHUNAN ---
         function getYearWeeks(year) {
             const weeks = [];
             let currentMonday = new Date(year, 0, 1);
@@ -1165,21 +1187,20 @@
 
         function toggleTheme() { document.body.classList.toggle('dark-mode'); }
 
-        /* FUNGSI RENDER HEADER TIMELINE (TAHUN, BULAN, MINGGU, KUARTAL) */
+        /* --- FUNGSI UTAMA RENDER HEADER TIMELINE (DIPERBAIKI UNTUK SINKRONISASI TOTAL) --- */
         function renderHeader() {
             const yearsRow = document.getElementById('yearsRow');
             const monthsRow = document.getElementById('monthsRow');
             const weeksRow = document.getElementById('weeksRow');
-            const gridHeader = document.getElementById('timelineGridHeader');
 
             if (!yearsRow || !monthsRow || !weeksRow) return;
 
             if (viewMode === '1year') {
+                document.documentElement.style.setProperty('--header-height', '54px');
                 weeksRow.style.display = 'flex';
-                if (gridHeader) gridHeader.style.height = '54px';
-
                 yearsRow.innerHTML = `<div class="year-cell" style="width: 100%;">${selectedYear}</div>`;
 
+                // Render Bulan (Jan, Feb, dst)
                 const monthNames = ["jan", "feb", "mar", "apr", "mei", "jun", "jul", "ags", "sep", "okt", "nov", "des"];
                 const weeks = getYearWeeks(selectedYear);
                 const monthCounts = new Array(12).fill(0);
@@ -1193,6 +1214,7 @@
                     }
                 });
 
+                // Render Tanggal-tanggal Senin / Minggu
                 const todayISO = formatDateISO(new Date());
                 let weekHTML = '';
                 const weekPercent = (1 / 52) * 100;
@@ -1206,9 +1228,9 @@
                 weeksRow.innerHTML = weekHTML;
 
             } else {
+                // Mode 5 Years (Kuartal)
+                document.documentElement.style.setProperty('--header-height', '37px');
                 weeksRow.style.display = 'none';
-                if (gridHeader) gridHeader.style.height = '37px';
-
                 let yearsHTML = '';
                 let quarterHTML = '';
                 
@@ -1301,7 +1323,6 @@
         }
 
         function renderContent(skipAutoUpdate = false) {
-            // Mencegah render ulang total saat user sedang aktif mengetik
             if (isUserTyping || (document.activeElement && document.activeElement.classList.contains('task-name-text'))) {
                 return;
             }
@@ -1660,7 +1681,6 @@
             return indices;
         }
 
-        // Penanganan input & tombol Enter pada task name
         function handleTaskKeydown(event, index, element) {
             isUserTyping = true;
             if (event.key === 'Enter') {
@@ -1683,7 +1703,6 @@
             }
         }
 
-        // FUNGSI MEMBERSIHKAN CACHE APLIKASI SECARA TOTAL
         async function resetAppCache() {
             console.log("Memulai proses pembersihan cache...");
             
