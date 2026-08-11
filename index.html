@@ -127,7 +127,9 @@
             gap: 10px;
             flex-wrap: wrap;
         }
+        .header-title-wrapper { display: flex; align-items: center; gap: 10px; }
         .header-title { font-size: 1.05rem; font-weight: 500; letter-spacing: 0.5px; }
+        .save-status-badge { font-size: 0.75rem; color: var(--muted-color); padding: 2px 6px; border-radius: 4px; background: var(--bg-color); border: 1px solid var(--border-color); }
         .header-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
         .theme-switch {
@@ -570,7 +572,10 @@
 
     <!-- Header Bar -->
     <header>
-        <div class="header-title" id="headerTitle">1 year</div>
+        <div class="header-title-wrapper">
+            <div class="header-title" id="headerTitle">1 year</div>
+            <span class="save-status-badge" id="saveStatus">saved</span>
+        </div>
         <div class="header-controls">
             <div class="year-selector-group">
                 <button class="btn-header" onclick="navigateYear(-1)">◄</button>
@@ -645,6 +650,7 @@
         let activeBar = null, actionType = null, startMouseX = 0;
         let childrenInitialStates = [];
         let viewerMode = false;
+        let saveTimeout = null; // Variable untuk Debounce Queue
 
         function formatDateISO(d) {
             const year = d.getFullYear();
@@ -696,7 +702,6 @@
                     .select('*')
                     .order('sort_order', { ascending: true });
 
-                // HANYA TIMPA JIKA SUPABASE TERISI DATA
                 if (!error && data && data.length > 0) {
                     tasks = data.map(t => {
                         return {
@@ -722,46 +727,70 @@
             }
         }
 
-        // SIMPAN DATA KE LOCALSTORAGE & SUPABASE
-        async function saveTasksToStorage() {
+        // SISTEM AUTO-SAVE DENGAN DEBOUNCE (JEDA 1.5 DETIK) DAN INDIKATOR STATUS
+        function saveTasksToStorage() {
             localStorage.setItem('zen_gantt_tasks_v3', JSON.stringify(tasks));
-            if (!dbClient) return;
-
-            try {
-                const payload = tasks.map((t, idx) => {
-                    const row = {
-                        name: t.name,
-                        level: t.level,
-                        mode: t.mode || 'MANUAL',
-                        start_date: t.startDate,
-                        end_date: t.endDate,
-                        notes: t.notes || "",
-                        collapsed: t.collapsed || false,
-                        completed: t.completed || false,
-                        hidden: t.hidden || false,
-                        sort_order: idx
-                    };
-                    if (t.id && typeof t.id === 'number') {
-                        row.id = t.id;
-                    }
-                    return row;
-                });
-
-                const { data, error } = await dbClient
-                    .from('tasks')
-                    .upsert(payload)
-                    .select();
-
-                if (!error && data) {
-                    data.forEach(savedItem => {
-                        const target = tasks.find(t => t.name === savedItem.name && t.level === savedItem.level);
-                        if (target && !target.id) target.id = savedItem.id;
-                    });
-                    localStorage.setItem('zen_gantt_tasks_v3', JSON.stringify(tasks));
-                }
-            } catch (e) {
-                console.error("Gagal simpan ke Supabase:", e);
+            
+            const statusEl = document.getElementById('saveStatus');
+            if (statusEl) {
+                statusEl.innerText = "saving...";
+                statusEl.style.color = "var(--text-color)";
             }
+
+            if (saveTimeout) clearTimeout(saveTimeout);
+
+            // Jeda 1500 ms (1.5 detik) sebelum melakukan sync ke cloud Supabase
+            saveTimeout = setTimeout(async () => {
+                if (!dbClient) {
+                    if (statusEl) { statusEl.innerText = "saved"; statusEl.style.color = "var(--muted-color)"; }
+                    return;
+                }
+
+                try {
+                    const payload = tasks.map((t, idx) => {
+                        const row = {
+                            name: t.name,
+                            level: t.level,
+                            mode: t.mode || 'MANUAL',
+                            start_date: t.startDate,
+                            end_date: t.endDate,
+                            notes: t.notes || "",
+                            collapsed: t.collapsed || false,
+                            completed: t.completed || false,
+                            hidden: t.hidden || false,
+                            sort_order: idx
+                        };
+                        if (t.id && typeof t.id === 'number') {
+                            row.id = t.id;
+                        }
+                        return row;
+                    });
+
+                    const { data, error } = await dbClient
+                        .from('tasks')
+                        .upsert(payload)
+                        .select();
+
+                    if (!error && data) {
+                        data.forEach(savedItem => {
+                            const target = tasks.find(t => t.name === savedItem.name && t.level === savedItem.level);
+                            if (target && !target.id) target.id = savedItem.id;
+                        });
+                        localStorage.setItem('zen_gantt_tasks_v3', JSON.stringify(tasks));
+                    }
+
+                    if (statusEl) {
+                        statusEl.innerText = "saved";
+                        statusEl.style.color = "var(--muted-color)";
+                    }
+                } catch (e) {
+                    console.error("Gagal simpan ke Supabase:", e);
+                    if (statusEl) {
+                        statusEl.innerText = "error saving";
+                        statusEl.style.color = "var(--red-line)";
+                    }
+                }
+            }, 1500);
         }
 
         function processHybridTimelineEngine() {
