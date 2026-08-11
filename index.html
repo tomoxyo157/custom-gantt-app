@@ -30,7 +30,7 @@
             --accent-color: #38342f;
             --line-color: rgba(216, 211, 200, 0.6);
             --sidebar-width: 380px;
-            --row-height: 38px;
+            --row-height: 28px;
             --shadow-md: 0 8px 24px rgba(0,0,0,0.06);
             --red-line: #e63946;
             --conflict-color: #dc2626;
@@ -703,15 +703,7 @@
         }
 
         // Raw Default Task Data dengan Mode Hybrid (AUTO vs MANUAL)
-        let defaultRawTasks = [
-            { id: 1, name: "A. perencanaan strategis", level: 0, mode: 'AUTO', targetStart: "2026-01-05", targetEnd: "2026-01-30", notes: "induk utama (bottom-up auto)", collapsed: false, completed: false },
-            { id: 2, name: "A1. riset pasar & target", level: 1, mode: 'MANUAL', targetStart: "2026-01-05", targetEnd: "2026-01-18", notes: "sub task A1", collapsed: false, completed: false },
-            { id: 3, name: "A1a. sebar kuesioner", level: 2, mode: 'MANUAL', targetStart: "2026-01-05", targetEnd: "2026-01-18", notes: "detail kuesioner", collapsed: false, completed: false },
-            { id: 4, name: "A1b. olah data spss", level: 2, mode: 'MANUAL', targetStart: "2026-01-12", targetEnd: "2026-01-25", notes: "spss analytics", collapsed: false, completed: false },
-            { id: 5, name: "A2. penyusunan anggaran", level: 1, mode: 'MANUAL', targetStart: "2026-01-19", targetEnd: "2026-01-30", notes: "budgeting team", collapsed: false, completed: false },
-            { id: 6, name: "B. sistem backend (top-down locked)", level: 0, mode: 'MANUAL', targetStart: "2026-02-02", targetEnd: "2026-03-01", notes: "target dikunci dari atas", collapsed: false, completed: false },
-            { id: 7, name: "B1. arsitektur database & api", level: 1, mode: 'MANUAL', targetStart: "2026-02-02", targetEnd: "2026-03-22", notes: "melebihi target induk -> pemicu konflik!", collapsed: false, completed: false }
-        ];
+        let defaultRawTasks = [];
 
         let tasks = JSON.parse(localStorage.getItem('zen_gantt_tasks_v3')) || defaultRawTasks.map(t => {
             return {
