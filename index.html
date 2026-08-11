@@ -385,7 +385,8 @@
             50% { opacity: 0.4; }
         }
 
-        .task-actions { display: flex; gap: 4px; opacity: 1; align-items: center; }
+        .task-actions { display: flex; gap: 4px; opacity: 0; transition: opacity 0.05s ease-in; align-items: center; pointer-events: none; }
+        .task-row:hover .task-actions, body.viewer-mode-active .task-row .task-actions { opacity: 1; pointer-events: pointer; pointer-events: auto; }
         
         .action-btn {
             background: none;
