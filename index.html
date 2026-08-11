@@ -1233,7 +1233,9 @@
                     ? `<span class="toggle-btn" onclick="toggleCollapse(${index}, event)" title="${task.collapsed ? 'buka anak' : 'tutup anak'}">${task.collapsed ? '▶' : '▼'}</span>`
                     : `<span class="toggle-btn-placeholder"></span>`;
 
-                const editableAttr = viewerMode ? '' : `contenteditable="true" onblur="updateTaskNameInline(${index}, this.innerText)"`;
+                // Handle Enter to accept/blur task name editing without adding new line
+                const editableAttr = viewerMode ? '' : `contenteditable="true" onblur="updateTaskNameInline(${index}, this.innerText)" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}"`;
+                
                 const dragAttrs = viewerMode ? '' : `draggable="true" ondragstart="dragStart(event, ${index})" ondragover="dragOver(event, ${index})" ondrop="drop(event, ${index})" ondragleave="dragLeave(event)"`;
                 const handleDisplay = viewerMode ? 'display:none;' : '';
                 const addTriggerHTML = viewerMode ? '' : `
