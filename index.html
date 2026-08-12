@@ -505,12 +505,15 @@
             display: flex; 
             gap: 2px; 
             opacity: 0; 
-            transition: opacity 0.1s ease; 
+            visibility: hidden; /* Tambahkan ini agar tidak mengganggu layout saat tersembunyi */
+            transition: opacity 0.1s ease, visibility 0.1s ease; 
             align-items: center; 
             pointer-events: none; 
         }
+        
         .task-row:hover .task-actions, body.viewer-mode-active .task-row .task-actions { 
             opacity: 1; 
+            visibility: visible; /* Munculkan dengan mulus tanpa menggeser elemen lain */
             pointer-events: auto; 
         }
         
