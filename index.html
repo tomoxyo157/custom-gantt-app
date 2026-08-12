@@ -333,7 +333,10 @@
             overflow-y: auto;
             position: relative;
             scrollbar-width: none;
+            /* Tambahkan padding bawah agar area kosong di bawah card terakhir tidak menempel langsung dengan trigger */
+            padding-bottom: 40px; 
         }
+        
         .sidebar-body::-webkit-scrollbar { display: none; }
 
         .empty-tasks-notice {
@@ -346,11 +349,11 @@
         .task-row-container { position: relative; }
 
         .insert-trigger {
-            height: 10px;
+            height: 8px;
             position: absolute;
             left: 0;
             right: 0;
-            z-index: 15;
+            z-index: 5; /* Diturunkan sedikit agar tidak mudah terpancing */
             cursor: pointer;
             display: flex;
             align-items: center;
