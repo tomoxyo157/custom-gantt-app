@@ -333,10 +333,7 @@
             overflow-y: auto;
             position: relative;
             scrollbar-width: none;
-            /* Tambahkan padding bawah agar area kosong di bawah card terakhir tidak menempel langsung dengan trigger */
-            padding-bottom: 40px; 
         }
-        
         .sidebar-body::-webkit-scrollbar { display: none; }
 
         .empty-tasks-notice {
@@ -349,11 +346,11 @@
         .task-row-container { position: relative; }
 
         .insert-trigger {
-            height: 8px;
+            height: 10px;
             position: absolute;
             left: 0;
             right: 0;
-            z-index: 5; /* Diturunkan sedikit agar tidak mudah terpancing */
+            z-index: 15;
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -820,6 +817,8 @@
         let isUserTyping = false;
         let isInteractingWithUI = false;
         let uiInteractionTimeout = null;
+        let isHoveringSidebar = false;
+        let lastRenderedTasksJSON = null;
 
         const ICONS = {
             check: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
@@ -904,7 +903,7 @@
         async function loadTasksFromSupabase(forceUpdate = false) {
             if (!dbClient) return;
 
-            if (!forceUpdate && (hasPendingSave || isUserTyping || isInteractingWithUI)) {
+            if (!forceUpdate && (hasPendingSave || isUserTyping || isInteractingWithUI || isHoveringSidebar)) {
                 return;
             }
 
@@ -936,12 +935,21 @@
                             tasks = loadedTasks;
                         }
                         isInitialLoadFromSupabase = false;
-                    } else if (forceUpdate || (!hasPendingSave && !isUserTyping && !isInteractingWithUI)) {
+                    } else if (forceUpdate || (!hasPendingSave && !isUserTyping && !isInteractingWithUI && !isHoveringSidebar)) {
                         tasks = loadedTasks;
                     }
 
                     localStorage.setItem('zen_gantt_tasks_v3', JSON.stringify(tasks));
-                    renderContent(true);
+
+                    // PERBAIKAN FLICKERING: skip render kalau data hasil fetch
+                    // sama persis dengan yang terakhir dirender. Ini mencegah
+                    // sidebar dibongkar-pasang tiap 3 detik padahal tidak ada
+                    // perubahan apa pun dari server (kasus paling sering terjadi),
+                    // sehingga hover state & tombol "+" tidak ikut ter-reset.
+                    const currentTasksJSON = JSON.stringify(tasks);
+                    if (currentTasksJSON !== lastRenderedTasksJSON) {
+                        renderContent(true);
+                    }
                 }
             } catch (e) {
                 console.error("Gagal load dari Supabase:", e);
@@ -1306,6 +1314,13 @@
             isSyncingTimeline = false;
         });
 
+        // PERBAIKAN FLICKERING: jangan biarkan auto-refresh dari Supabase
+        // menghancurkan/membangun ulang DOM row selama mouse ada di area sidebar
+        // (termasuk saat hover ke icon edit/note/delete/auto-manual, atau saat
+        // ingin klik tombol "+" di sela-sela card).
+        sidebarBody.addEventListener('mouseenter', () => { isHoveringSidebar = true; });
+        sidebarBody.addEventListener('mouseleave', () => { isHoveringSidebar = false; });
+
         async function initGantt() {
             if (localStorage.getItem('zen_gantt_auth') === 'true') {
                 const overlayEl = document.getElementById('pinOverlay');
@@ -1322,7 +1337,7 @@
             if (dbClient) {
                 dbClient.channel('public:tasks')
                     .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, async () => {
-                        if (!hasPendingSave && !isUserTyping && !isInteractingWithUI) {
+                        if (!hasPendingSave && !isUserTyping && !isInteractingWithUI && !isHoveringSidebar) {
                             await loadTasksFromSupabase(false);
                         }
                     })
@@ -1330,7 +1345,7 @@
             }
 
             setInterval(() => {
-                if (dbClient && !hasPendingSave && !isUserTyping && !isInteractingWithUI) {
+                if (dbClient && !hasPendingSave && !isUserTyping && !isInteractingWithUI && !isHoveringSidebar) {
                     loadTasksFromSupabase(false);
                 }
             }, 3000);
@@ -1475,6 +1490,7 @@
             if (tasks.length === 0) {
                 sidebar.innerHTML = `<div class="empty-tasks-notice">belum ada pekerjaan.<br><br><button class="btn" onclick="insertTaskAt(0, event)">+ tambah task pertama</button></div>`;
                 timeline.innerHTML = '';
+                lastRenderedTasksJSON = JSON.stringify(tasks);
                 return;
             }
 
@@ -1499,7 +1515,7 @@
                 const dragOverAttrs = viewerMode ? '' : `ondragover="dragOver(event, ${index})" ondrop="drop(event, ${index})" ondragleave="dragLeave(event)"`;
 
                 const addTriggerHTML = viewerMode ? '' : `
-                    <div class="insert-trigger top" onclick="insertTaskAt(${index}, event)">
+                    <div class="insert-trigger top">
                         <div class="insert-line"><button class="plus-btn" onclick="insertTaskAt(${index}, event)">+</button></div>
                     </div>`;
 
@@ -1530,7 +1546,7 @@
                             </div>
                         </div>
                         ${!viewerMode && index === tasks.length - 1 ? `
-                        <div class="insert-trigger bottom" onclick="insertTaskAt(${index + 1}, event)">
+                        <div class="insert-trigger bottom">
                             <div class="insert-line"><button class="plus-btn" onclick="insertTaskAt(${index + 1}, event)">+</button></div>
                         </div>` : ''}
                     </div>
@@ -1580,6 +1596,7 @@
 
             sidebar.innerHTML = sidebarHTML;
             timeline.innerHTML = timelineHTML;
+            lastRenderedTasksJSON = JSON.stringify(tasks);
         }
 
         function handleTaskFocus(index) {
