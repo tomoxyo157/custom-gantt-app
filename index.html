@@ -3,19 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zen Gantt Chart - Multi Bar with Overlap Conflict</title>
+    <title>zen gantt chart</title>
 
-    <!-- Favicon & Mobile Homescreen Icons -->
+    <!-- Favicon & PWA -->
     <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/tomoxyo157/custom-gantt-app/4ba018d3eba024c6c4e1aefe1f007789ba037e6f/white.png">
     <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/tomoxyo157/custom-gantt-app/4ba018d3eba024c6c4e1aefe1f007789ba037e6f/black.png">
-
-    <!-- PWA Web App Manifest -->
     <link rel="manifest" href="manifest.json">
 
-    <!-- Supabase JS Client -->
+    <!-- Supabase JS Client & Fonts -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-    <!-- EB Garamond Font -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
@@ -68,6 +64,20 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
         }
 
+        /* Flex Centering Utility (Penyederhanaan Redundansi Layout) */
+        .pin-overlay, .theme-switch-icon, .btn-icon, .btn-icon-nav, .plus-btn, 
+        .toggle-btn, .drag-handle, .month-cell, .week-cell, .action-btn, 
+        .year-cell, .switch-container, .modal-overlay, .modal-header {
+            display: flex;
+            align-items: center;
+        }
+
+        .pin-overlay, .theme-switch-icon, .btn-icon, .btn-icon-nav, .plus-btn, 
+        .toggle-btn, .drag-handle, .month-cell, .week-cell, .action-btn, 
+        .year-cell, .modal-overlay {
+            justify-content: center;
+        }
+
         body {
             background-color: var(--bg-color);
             color: var(--text-color);
@@ -84,9 +94,6 @@
             inset: 0;
             background: var(--bg-color);
             z-index: 99999;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             flex-direction: column;
             gap: 16px;
             opacity: 1;
@@ -131,27 +138,11 @@
             z-index: 25;
         }
         
-        .header-title-wrapper { 
-            display: flex; 
-            align-items: center; 
-            gap: 10px; 
-            justify-self: start;
-        }
+        .header-title-wrapper { display: flex; align-items: center; gap: 10px; justify-self: start; }
         .header-title { font-size: 1.05rem; font-weight: 500; letter-spacing: 0.5px; white-space: nowrap; }
 
-        .header-controls-center { 
-            display: flex; 
-            align-items: center; 
-            gap: 14px; 
-            justify-self: center;
-        }
-
-        .header-controls-right { 
-            display: flex; 
-            align-items: center; 
-            gap: 8px; 
-            justify-self: end;
-        }
+        .header-controls-center { display: flex; align-items: center; gap: 14px; justify-self: center; }
+        .header-controls-right { display: flex; align-items: center; gap: 8px; justify-self: end; }
 
         .save-status-badge { 
             font-size: 0.72rem; 
@@ -164,17 +155,10 @@
             white-space: nowrap;
         }
 
-        .switch-container {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            user-select: none;
-        }
+        .switch-container { gap: 5px; user-select: none; }
         
-        .theme-switch {
+        .theme-switch, .year-view-switch {
             position: relative;
-            width: 28px;
-            height: 16px;
             background: var(--bg-color);
             border: 1px solid var(--border-color);
             border-radius: 16px;
@@ -182,18 +166,13 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 2px;
+            height: 16px;
         }
-        .theme-switch-icon {
-            width: 9px;
-            height: 9px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--muted-color);
-            z-index: 1;
-        }
-        .theme-switch-handle {
+
+        .theme-switch { width: 28px; padding: 0 2px; }
+        .theme-switch-icon { width: 9px; height: 9px; color: var(--muted-color); z-index: 1; }
+        
+        .theme-switch-handle, .year-switch-handle {
             position: absolute;
             top: 1px;
             left: 1px;
@@ -206,37 +185,8 @@
         }
         body.dark-mode .theme-switch-handle { transform: translateX(12px); }
 
-        .year-view-switch {
-            position: relative;
-            width: 32px;
-            height: 16px;
-            background: var(--bg-color);
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 4px;
-        }
-        .year-switch-label {
-            font-size: 0.58rem;
-            font-weight: 700;
-            color: var(--muted-color);
-            z-index: 1;
-            line-height: 1;
-        }
-        .year-switch-handle {
-            position: absolute;
-            top: 1px;
-            left: 1px;
-            width: 12px;
-            height: 12px;
-            background: var(--text-color);
-            border-radius: 50%;
-            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            z-index: 2;
-        }
+        .year-view-switch { width: 32px; padding: 0 4px; }
+        .year-switch-label { font-size: 0.58rem; font-weight: 700; color: var(--muted-color); z-index: 1; line-height: 1; }
         .year-view-switch.mode-5y .year-switch-handle { transform: translateX(16px); }
 
         .btn-icon {
@@ -248,12 +198,9 @@
             padding: 0;
             border-radius: 5px;
             cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
             transition: all 0.15s ease;
         }
-        .btn-icon:hover { background: var(--border-color); }
+        .btn-icon:hover, .btn-icon-nav:hover { background: var(--border-color); }
         .btn-icon.active-mode { background: var(--text-color); color: var(--bg-color); border-color: var(--text-color); }
         .btn-icon svg { width: 14px; height: 14px; stroke-width: 1.8; }
 
@@ -271,13 +218,9 @@
             border: none;
             color: var(--text-color);
             cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             padding: 3px;
             border-radius: 3px;
         }
-        .year-selector-group .btn-icon-nav:hover { background: var(--border-color); }
         .year-input {
             width: 36px;
             background: transparent;
@@ -289,11 +232,7 @@
             outline: none;
             -moz-appearance: textfield;
         }
-        .year-input::-webkit-inner-spin-button,
-        .year-input::-webkit-outer-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-        }
+        .year-input::-webkit-inner-spin-button, .year-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 
         .gantt-wrapper {
             display: flex;
@@ -327,27 +266,12 @@
             z-index: 10;
         }
 
-        .sidebar-header {
-            height: 54px;
-            border-bottom: 1px solid var(--border-color);
-            flex-shrink: 0;
-            background: var(--bg-color);
-        }
+        .sidebar-header { height: 54px; border-bottom: 1px solid var(--border-color); flex-shrink: 0; background: var(--bg-color); }
 
-        .sidebar-body {
-            flex: 1;
-            overflow-y: auto;
-            position: relative;
-            scrollbar-width: none;
-        }
-        .sidebar-body::-webkit-scrollbar { display: none; }
+        .sidebar-body { flex: 1; overflow-y: auto; position: relative; scrollbar-width: none; }
+        .sidebar-body::-webkit-scrollbar, .gantt-timeline::-webkit-scrollbar { display: none; }
 
-        .empty-tasks-notice {
-            padding: 20px;
-            text-align: center;
-            font-size: 0.9rem;
-            color: var(--muted-color);
-        }
+        .empty-tasks-notice { padding: 20px; text-align: center; font-size: 0.9rem; color: var(--muted-color); }
 
         .task-row-container { position: relative; }
 
@@ -383,9 +307,6 @@
             height: 15px;
             border-radius: 50%;
             font-size: 0.75rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             cursor: pointer;
             opacity: 0;
             transition: opacity 0.15s ease;
@@ -410,7 +331,6 @@
 
         .task-row.layer-hidden { opacity: 0.35; }
         .task-row.has-conflict { background-color: var(--conflict-bg); }
-        
         .task-row.drag-over-top { border-top: 2px solid var(--accent-color) !important; }
         .task-row.drag-over-bottom { border-bottom: 2px solid var(--accent-color) !important; }
         .task-row.drag-over-child { background: var(--border-color) !important; opacity: 0.85; }
@@ -425,15 +345,7 @@
             padding-left: 6px;
         }
         
-        .drag-handle {
-            cursor: grab;
-            color: var(--muted-color);
-            padding: 4px;
-            opacity: 0.4;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-        }
+        .drag-handle { cursor: grab; color: var(--muted-color); padding: 4px; opacity: 0.4; }
         .drag-handle:hover { opacity: 1; }
         .drag-handle:active { cursor: grabbing; }
 
@@ -442,24 +354,11 @@
             cursor: pointer;
             color: var(--muted-color);
             width: 12px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
             user-select: none;
             transition: color 0.15s ease;
         }
         .toggle-btn:hover { color: var(--text-color); }
         .toggle-btn-placeholder { width: 12px; display: inline-block; }
-
-        .add-interval-btn {
-            cursor: pointer;
-            color: var(--muted-color);
-            font-weight: bold;
-            font-size: 0.85rem;
-            padding: 0 4px;
-            user-select: none;
-        }
-        .add-interval-btn:hover { color: var(--text-color); }
 
         .task-name-text {
             flex: 1;
@@ -511,10 +410,7 @@
             line-height: 1;
         }
 
-        @keyframes pulseWarning {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.4; }
-        }
+        @keyframes pulseWarning { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
         .task-actions { 
             display: flex; 
@@ -539,9 +435,6 @@
             border-radius: 3px;
             cursor: pointer;
             color: var(--muted-color);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
         }
         .action-btn:hover { background: var(--border-color); color: var(--text-color); }
         .action-btn.del:hover { color: #ff3b30; }
@@ -555,21 +448,17 @@
             position: relative;
             scrollbar-width: none;
         }
-        .gantt-timeline::-webkit-scrollbar { display: none; }
         
         .timeline-grid-header { display: flex; flex-direction: column; position: sticky; top: 0; z-index: 8; background: var(--card-bg); width: 100%; min-width: 100%; height: 54px; }
         
         .years-row { display: flex; height: 20px; border-bottom: 1px solid var(--border-color); background: var(--bg-color); width: 100%; }
-        .year-cell { display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 600; color: var(--text-color); border-right: 1px solid var(--border-color); width: 100%; }
+        .year-cell { font-size: 0.8rem; font-weight: 600; color: var(--text-color); border-right: 1px solid var(--border-color); width: 100%; }
 
         .months-row, .weeks-row { display: flex; height: 17px; border-bottom: 1px solid var(--border-color); width: 100%; }
-        .month-cell { border-right: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; font-size: 0.72rem; color: var(--muted-color); }
+        .month-cell { border-right: 1px solid var(--border-color); font-size: 0.72rem; color: var(--muted-color); }
         
         .week-cell { 
             border-right: 1px solid var(--border-color); 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
             font-size: 0.58rem; 
             color: var(--muted-color); 
             opacity: 0.75;
@@ -627,9 +516,6 @@
             inset: 0;
             background: rgba(0,0,0,0.4);
             backdrop-filter: blur(2px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
             z-index: 10000;
             opacity: 0;
             pointer-events: none;
@@ -640,7 +526,7 @@
             background: var(--card-bg);
             padding: 22px;
             border-radius: 10px;
-            width: 380px;
+            width: 440px;
             border: 1px solid var(--border-color);
             box-shadow: var(--shadow-md);
             transform: scale(0.92);
@@ -648,26 +534,25 @@
         }
         .modal-overlay.active .modal-card { transform: scale(1); }
         
-        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }
+        .modal-header { justify-content: space-between; margin-bottom: 14px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }
         .modal-title { font-size: 0.95rem; font-weight: 600; color: var(--text-color); }
         .btn-close { background: none; border: none; font-size: 1.2rem; color: var(--muted-color); cursor: pointer; }
         
-        .modal-card textarea, #modalTextarea {
-            width: 100% !important;
-            height: 140px !important;
-            padding: 12px !important;
-            border: 1px solid var(--border-color) !important;
-            background: var(--bg-color) !important;
-            color: var(--text-color) !important;
-            border-radius: 6px !important;
-            margin-bottom: 16px !important;
-            outline: none !important;
-            font-size: 0.9rem !important;
-            line-height: 1.5 !important;
-            box-sizing: border-box !important;
-            display: block !important;
-            resize: none !important;
-            overflow-y: auto !important;
+        .modal-card textarea {
+            width: 100%;
+            height: 90px;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-color);
+            color: var(--text-color);
+            border-radius: 6px;
+            margin-bottom: 16px;
+            outline: none;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            display: block;
+            resize: none;
+            overflow-y: auto;
         }
         
         .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
@@ -702,7 +587,7 @@
 
     <!-- Warning Modal untuk Max Interval -->
     <div class="modal-overlay" id="warningModal">
-        <div class="modal-card" style="text-align: center;">
+        <div class="modal-card" style="text-align: center; width: 320px;">
             <h3 style="font-size: 1.1rem; margin-bottom: 10px;">Batas Sistem Tercapai</h3>
             <p style="margin: 16px 0; color: var(--muted-color); font-size: 0.9rem;">Card ini sudah memiliki batas maksimal interval (15). Untuk performa, silakan tambahkan task baru.</p>
             <button class="btn" onclick="document.getElementById('warningModal').classList.remove('active')">tutup</button>
@@ -711,7 +596,7 @@
 
     <header>
         <div class="header-title-wrapper">
-            <div class="header-title">Zen Gantt - Multi Bar</div>
+            <div class="header-title">zen gantt</div>
         </div>
 
         <div class="header-controls-center">
@@ -785,13 +670,20 @@
         </div>
     </div>
 
+    <!-- Modal Detail & Interval Editor -->
     <div class="modal-overlay" id="notesModal" onclick="closeModalOnOverlay(event)">
         <div class="modal-card">
             <div class="modal-header">
-                <span class="modal-title" id="modalTitle">catatan pekerjaan</span>
+                <span class="modal-title" id="modalTitle">pengaturan task & interval</span>
                 <button class="btn-close" onclick="closeModal()">×</button>
             </div>
+            
+            <div style="margin-bottom: 10px; font-size: 0.85rem; color: var(--muted-color);">daftar interval bar:</div>
+            <div id="intervalsEditorContainer" style="max-height: 160px; overflow-y: auto; margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;"></div>
+
+            <div style="margin-bottom: 6px; font-size: 0.85rem; color: var(--muted-color);">catatan pekerjaan:</div>
             <textarea id="modalTextarea" placeholder="tulis rincian dan deskripsi di sini..."></textarea>
+            
             <div class="modal-actions">
                 <button class="btn btn-secondary" onclick="closeModal()">batal</button>
                 <button class="btn" onclick="saveNotes()">simpan</button>
@@ -812,52 +704,34 @@
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vdmNqc2NkbnR3Y2thc2xudW1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUwNDU3ODUsImV4cCI6MjEwMDYyMTc4NX0.rGYGREApohqwSaArGr4DtZXeuUJ0OUE7QeOyNjpswv8';
         const MAX_INTERVALS_LIMIT = 15;
 
-        let dbClient = null;
-        if (window.supabase && SUPABASE_URL !== '') {
-            dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        }
+        let dbClient = (window.supabase && SUPABASE_URL) ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
-        let selectedYear = 2026;
-        let viewMode = '1year';
-        let draggedTaskIndex = null;
-        let currentEditingIndex = null;
-        let activeBar = null, actionType = null, startMouseX = 0;
-        let activeIntervalIndex = null;
-        let childrenInitialStates = [];
-        let viewerMode = false;
-        let saveTimeout = null; 
-        let isInitialLoadFromSupabase = true;
+        let selectedYear = 2026, viewMode = '1year', draggedTaskIndex = null, currentEditingIndex = null;
+        let activeBar = null, actionType = null, startMouseX = 0, activeIntervalIndex = null;
+        let childrenInitialStates = [], viewerMode = false, saveTimeout = null, isInitialLoadFromSupabase = true;
+        let hasPendingSave = false, isUserTyping = false, isInteractingWithUI = false, uiInteractionTimeout = null;
+        let isHoveringSidebar = false, lastRenderedTasksJSON = null;
 
-        let hasPendingSave = false;
-        let isUserTyping = false;
-        let isInteractingWithUI = false;
-        let uiInteractionTimeout = null;
-        let isHoveringSidebar = false;
-        let lastRenderedTasksJSON = null;
+        // SVG Helper Function (Menghemat Karakter/Ukuran File)
+        const makeSvg = (path, size = 12, strokeWidth = 2) => 
+            `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
 
         const ICONS = {
-            check: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
-            note: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
-            eye: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`,
-            eyeOff: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`,
-            trash: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`,
-            drag: `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="5" r="1.5" fill="currentColor"/><circle cx="9" cy="12" r="1.5" fill="currentColor"/><circle cx="9" cy="19" r="1.5" fill="currentColor"/><circle cx="15" cy="5" r="1.5" fill="currentColor"/><circle cx="15" cy="12" r="1.5" fill="currentColor"/><circle cx="15" cy="19" r="1.5" fill="currentColor"/></svg>`
+            check: makeSvg('<polyline points="20 6 9 17 4 12"/>', 12, 2.5),
+            note: makeSvg('<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>'),
+            eye: makeSvg('<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>'),
+            eyeOff: makeSvg('<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>'),
+            trash: makeSvg('<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>'),
+            drag: makeSvg('<circle cx="9" cy="5" r="1.5" fill="currentColor"/><circle cx="9" cy="12" r="1.5" fill="currentColor"/><circle cx="9" cy="19" r="1.5" fill="currentColor"/><circle cx="15" cy="5" r="1.5" fill="currentColor"/><circle cx="15" cy="12" r="1.5" fill="currentColor"/><circle cx="15" cy="19" r="1.5" fill="currentColor"/>', 10)
         };
 
         function setUIInteracting() {
             isInteractingWithUI = true;
             if (uiInteractionTimeout) clearTimeout(uiInteractionTimeout);
-            uiInteractionTimeout = setTimeout(() => {
-                isInteractingWithUI = false;
-            }, 300);
+            uiInteractionTimeout = setTimeout(() => { isInteractingWithUI = false; }, 300);
         }
 
-        function formatDateISO(d) {
-            const year = d.getFullYear();
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-        }
+        const formatDateISO = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
         function addDays(dateStr, days) {
             const d = new Date(dateStr + 'T00:00:00');
@@ -868,19 +742,14 @@
         function getYearWeeks(year) {
             const weeks = [];
             let currentMonday = new Date(year, 0, 1);
-            while (currentMonday.getDay() !== 1) {
-                currentMonday.setDate(currentMonday.getDate() + 1);
-            }
+            while (currentMonday.getDay() !== 1) currentMonday.setDate(currentMonday.getDate() + 1);
 
             for (let i = 0; i < 52; i++) {
                 const start = new Date(currentMonday);
                 const end = new Date(currentMonday);
                 end.setDate(end.getDate() + 6);
-                
                 weeks.push({
                     index: i + 1,
-                    startDate: new Date(start),
-                    endDate: new Date(end),
                     startDateStr: formatDateISO(start),
                     endDateStr: formatDateISO(end),
                     dayLabel: start.getDate().toString(),
@@ -896,11 +765,9 @@
         function migrateData() {
             tasks = tasks.map(t => {
                 if (!t.intervals) {
-                    if (t.startDate && t.endDate) {
-                        t.intervals = [{ start: t.startDate, end: t.endDate }];
-                    } else if (t.start_date && t.end_date) {
-                        t.intervals = [{ start: t.start_date, end: t.end_date }];
-                    } else {
+                    if (t.startDate && t.endDate) t.intervals = [{ start: t.startDate, end: t.endDate }];
+                    else if (t.start_date && t.end_date) t.intervals = [{ start: t.start_date, end: t.end_date }];
+                    else {
                         const todayStr = formatDateISO(new Date());
                         t.intervals = [{ start: todayStr, end: addDays(todayStr, 7) }];
                     }
@@ -914,36 +781,21 @@
             if (confirm("Lakukan reset cache & sync ulang data dari server?")) {
                 try {
                     if ('serviceWorker' in navigator) {
-                        const registrations = await navigator.serviceWorker.getRegistrations();
-                        for (let registration of registrations) {
-                            await registration.unregister();
-                        }
+                        for (let reg of await navigator.serviceWorker.getRegistrations()) await reg.unregister();
                     }
                     if ('caches' in window) {
-                        const cacheNames = await caches.keys();
-                        for (let name of cacheNames) {
-                            await caches.delete(name);
-                        }
+                        for (let name of await caches.keys()) await caches.delete(name);
                     }
-                } catch (e) {
-                    console.error("Error clearing caches:", e);
-                }
+                } catch (e) { console.error("Error clearing caches:", e); }
                 window.location.reload(true);
             }
         }
 
         async function loadTasksFromSupabase(forceUpdate = false) {
-            if (!dbClient) return;
-
-            if (!forceUpdate && (hasPendingSave || isUserTyping || isInteractingWithUI || isHoveringSidebar)) {
-                return;
-            }
+            if (!dbClient || (!forceUpdate && (hasPendingSave || isUserTyping || isInteractingWithUI || isHoveringSidebar))) return;
 
             try {
-                const { data, error } = await dbClient
-                    .from('tasks')
-                    .select('*')
-                    .order('sort_order', { ascending: true });
+                const { data, error } = await dbClient.from('tasks').select('*').order('sort_order', { ascending: true });
 
                 if (!error && data) {
                     const loadedTasks = data.map(t => ({
@@ -962,9 +814,7 @@
                     }));
 
                     if (isInitialLoadFromSupabase) {
-                        if (tasks.length === 0 || loadedTasks.length > 0) {
-                            tasks = loadedTasks;
-                        }
+                        if (tasks.length === 0 || loadedTasks.length > 0) tasks = loadedTasks;
                         isInitialLoadFromSupabase = false;
                     } else if (forceUpdate || (!hasPendingSave && !isUserTyping && !isInteractingWithUI && !isHoveringSidebar)) {
                         tasks = loadedTasks;
@@ -974,33 +824,21 @@
                     localStorage.setItem('zen_gantt_tasks_multi', JSON.stringify(tasks));
 
                     const currentTasksJSON = JSON.stringify(tasks);
-                    if (currentTasksJSON !== lastRenderedTasksJSON) {
-                        renderContent(true);
-                    }
+                    if (currentTasksJSON !== lastRenderedTasksJSON) renderContent(true);
                 }
-            } catch (e) {
-                console.error("Gagal load dari Supabase:", e);
-            }
+            } catch (e) { console.error("Gagal load dari Supabase:", e); }
         }
 
         function saveTasksToStorage() {
             localStorage.setItem('zen_gantt_tasks_multi', JSON.stringify(tasks));
-            
             const statusEl = document.getElementById('saveStatus');
-            if (statusEl) {
-                statusEl.innerText = "pending save (1m)...";
-                statusEl.style.color = "var(--muted-color)";
-            }
+            if (statusEl) { statusEl.innerText = "pending save (1m)..."; statusEl.style.color = "var(--muted-color)"; }
 
             hasPendingSave = true;
-
             if (saveTimeout) clearTimeout(saveTimeout);
 
             saveTimeout = setTimeout(async () => {
-                if (statusEl) {
-                    statusEl.innerText = "saving...";
-                    statusEl.style.color = "var(--text-color)";
-                }
+                if (statusEl) { statusEl.innerText = "saving..."; statusEl.style.color = "var(--text-color)"; }
 
                 if (!dbClient) {
                     hasPendingSave = false;
@@ -1009,74 +847,42 @@
                 }
 
                 try {
-                    const existingTasks = [];
-                    const newTasks = [];
-
+                    const existingTasks = [], newTasks = [];
                     tasks.forEach((t, idx) => {
                         const firstInterval = (t.intervals && t.intervals.length > 0) ? t.intervals[0] : { start: `${selectedYear}-01-01`, end: `${selectedYear}-01-07` };
                         const row = {
-                            name: t.name,
-                            level: t.level,
-                            mode: t.mode || 'MANUAL',
-                            start_date: firstInterval.start,
-                            end_date: firstInterval.end,
-                            intervals: t.intervals,
-                            notes: t.notes || "",
-                            collapsed: t.collapsed || false,
-                            completed: t.completed || false,
-                            hidden: t.hidden || false,
-                            sort_order: idx
+                            name: t.name, level: t.level, mode: t.mode || 'MANUAL',
+                            start_date: firstInterval.start, end_date: firstInterval.end,
+                            intervals: t.intervals, notes: t.notes || "",
+                            collapsed: t.collapsed || false, completed: t.completed || false,
+                            hidden: t.hidden || false, sort_order: idx
                         };
 
-                        if (t.id) {
-                            row.id = t.id;
-                            existingTasks.push(row);
-                        } else {
-                            newTasks.push({ localIdx: idx, row: row });
-                        }
+                        if (t.id) { row.id = t.id; existingTasks.push(row); }
+                        else newTasks.push({ localIdx: idx, row: row });
                     });
 
                     if (existingTasks.length > 0) {
-                        const { error: upsertErr } = await dbClient
-                            .from('tasks')
-                            .upsert(existingTasks, { onConflict: 'id' });
-                        
-                        if (upsertErr) throw upsertErr;
+                        const { error } = await dbClient.from('tasks').upsert(existingTasks, { onConflict: 'id' });
+                        if (error) throw error;
                     }
 
                     if (newTasks.length > 0) {
-                        const rowsToInsert = newTasks.map(item => item.row);
-                        const { data: insertedData, error: insertErr } = await dbClient
-                            .from('tasks')
-                            .insert(rowsToInsert)
-                            .select();
-
-                        if (insertErr) throw insertErr;
-
-                        if (insertedData) {
-                            insertedData.forEach((insertedItem, i) => {
-                                const localIdx = newTasks[i].localIdx;
-                                if (tasks[localIdx]) {
-                                    tasks[localIdx].id = insertedItem.id;
-                                }
+                        const { data, error } = await dbClient.from('tasks').insert(newTasks.map(item => item.row)).select();
+                        if (error) throw error;
+                        if (data) {
+                            data.forEach((insertedItem, i) => {
+                                if (tasks[newTasks[i].localIdx]) tasks[newTasks[i].localIdx].id = insertedItem.id;
                             });
                             localStorage.setItem('zen_gantt_tasks_multi', JSON.stringify(tasks));
                         }
                     }
 
-                    if (statusEl) {
-                        statusEl.innerText = "saved";
-                        statusEl.style.color = "var(--muted-color)";
-                    }
+                    if (statusEl) { statusEl.innerText = "saved"; statusEl.style.color = "var(--muted-color)"; }
                 } catch (e) {
                     console.error("Gagal simpan ke Supabase:", e);
-                    if (statusEl) {
-                        statusEl.innerText = "error saving";
-                        statusEl.style.color = "var(--red-line)";
-                    }
-                } finally {
-                    hasPendingSave = false;
-                }
+                    if (statusEl) { statusEl.innerText = "error saving"; statusEl.style.color = "var(--red-line)"; }
+                } finally { hasPendingSave = false; }
             }, 60000);
         }
 
@@ -1086,7 +892,6 @@
             for (let i = tasks.length - 1; i >= 0; i--) {
                 let hasOverlapConflict = false;
 
-                // Deteksi tumpang tindih (overlap) antar interval dalam 1 card yang sama
                 if (tasks[i].intervals && tasks[i].intervals.length > 1) {
                     const sortedIntervals = [...tasks[i].intervals].sort((a, b) => a.start.localeCompare(b.start));
                     for (let j = 0; j < sortedIntervals.length - 1; j++) {
@@ -1100,12 +905,9 @@
                 const childIndices = getSubtaskIndicesList(i);
 
                 if (childIndices.length > 0) {
-                    let minStart = null;
-                    let maxEnd = null;
-
+                    let minStart = null, maxEnd = null;
                     childIndices.forEach(childIdx => {
-                        const c = tasks[childIdx];
-                        (c.intervals || []).forEach(iv => {
+                        (tasks[childIdx].intervals || []).forEach(iv => {
                             if (!minStart || iv.start < minStart) minStart = iv.start;
                             if (!maxEnd || iv.end > maxEnd) maxEnd = iv.end;
                         });
@@ -1114,14 +916,11 @@
                     tasks[i].calculatedStart = minStart;
                     tasks[i].calculatedEnd = maxEnd;
 
-                    if (tasks[i].mode === 'AUTO') {
-                        if (minStart && maxEnd && tasks[i].intervals && tasks[i].intervals.length > 0) {
-                            tasks[i].intervals[0].start = minStart;
-                            tasks[i].intervals[0].end = maxEnd;
-                        }
+                    if (tasks[i].mode === 'AUTO' && minStart && maxEnd && tasks[i].intervals?.length > 0) {
+                        tasks[i].intervals[0].start = minStart;
+                        tasks[i].intervals[0].end = maxEnd;
                     }
                 }
-
                 tasks[i].hasConflict = hasOverlapConflict;
             }
         }
@@ -1166,21 +965,15 @@
         function navigateYear(delta) { setYear(selectedYear + delta); }
 
         function goToToday() {
-            const today = new Date();
-            const currentYear = today.getFullYear();
-            if (viewMode === '5year') { setYear(currentYear - 2); } 
-            else { setYear(currentYear); }
+            const currentYear = new Date().getFullYear();
+            setYear(viewMode === '5year' ? currentYear - 2 : currentYear);
             setTimeout(centerTodayLine, 60);
         }
 
         function centerTodayLine() {
             const redLine = document.querySelector('.current-week-line');
             const timeline = document.getElementById('timelineContainer');
-            if (redLine && timeline) {
-                const redLineLeft = redLine.offsetLeft;
-                const timelineWidth = timeline.clientWidth;
-                timeline.scrollLeft = redLineLeft - (timelineWidth / 2);
-            }
+            if (redLine && timeline) timeline.scrollLeft = redLine.offsetLeft - (timeline.clientWidth / 2);
         }
 
         function toggleTaskMode(index, e) {
@@ -1198,14 +991,10 @@
             if (isParent(index)) {
                 let parentLevel = tasks[index].level;
                 for (let i = index + 1; i < tasks.length; i++) {
-                    if (tasks[i].level > parentLevel) {
-                        tasks[i].hidden = newState;
-                    } else {
-                        break;
-                    }
+                    if (tasks[i].level > parentLevel) tasks[i].hidden = newState;
+                    else break;
                 }
             }
-
             renderContent();
         }
 
@@ -1232,14 +1021,12 @@
             return false;
         }
 
-        window.addEventListener('keydown', (e) => { 
-            if (e.key === 'Escape') closeModal(); 
-        });
+        window.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
         document.addEventListener('DOMContentLoaded', () => {
             const pinInput = document.getElementById('pinInput');
             const loginBtn = document.getElementById('loginBtn');
-            if (pinInput) pinInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') checkPin(); });
+            if (pinInput) pinInput.addEventListener('keydown', e => { if (e.key === 'Enter') checkPin(); });
             if (loginBtn) loginBtn.addEventListener('click', checkPin);
 
             const sidebarEl = document.getElementById('sidebarContainer');
@@ -1274,13 +1061,7 @@
 
         function toggleViewMode() {
             viewMode = (viewMode === '1year') ? '5year' : '1year';
-            const switchEl = document.getElementById('yearViewSwitch');
-            
-            if (viewMode === '5year') {
-                switchEl.classList.add('mode-5y');
-            } else {
-                switchEl.classList.remove('mode-5y');
-            }
+            document.getElementById('yearViewSwitch').classList.toggle('mode-5y', viewMode === '5year');
             renderHeader();
             renderContent(true);
         }
@@ -1288,18 +1069,15 @@
         if (window.innerWidth <= 768) {
             viewerMode = true;
             document.addEventListener('DOMContentLoaded', () => {
-                const btn = document.getElementById('viewerModeBtn');
-                if (btn) {
-                    btn.classList.add('active-mode');
-                    document.getElementById('bodyRoot').classList.add('viewer-mode-active');
-                }
+                document.getElementById('viewerModeBtn')?.classList.add('active-mode');
+                document.getElementById('bodyRoot')?.classList.add('viewer-mode-active');
             });
         }
 
         const resizer = document.getElementById('sidebarResizer');
         let isResizingSidebar = false;
 
-        resizer.addEventListener('mousedown', (e) => {
+        resizer.addEventListener('mousedown', () => {
             isResizingSidebar = true;
             resizer.classList.add('resizing');
             document.addEventListener('mousemove', handleSidebarResize);
@@ -1308,8 +1086,7 @@
 
         function handleSidebarResize(e) {
             if (!isResizingSidebar) return;
-            const newWidth = Math.max(220, Math.min(e.clientX - 18, 650));
-            document.documentElement.style.setProperty('--sidebar-width', newWidth + 'px');
+            document.documentElement.style.setProperty('--sidebar-width', Math.max(220, Math.min(e.clientX - 18, 650)) + 'px');
             renderHeader();
             renderContent(true);
         }
@@ -1321,29 +1098,19 @@
             document.removeEventListener('mouseup', stopSidebarResize);
         }
 
-        window.addEventListener('resize', () => {
-            renderHeader();
-            renderContent(true);
-        });
+        window.addEventListener('resize', () => { renderHeader(); renderContent(true); });
 
         const sidebarBody = document.getElementById('sidebarBody');
         const timelineContainer = document.getElementById('timelineContainer');
-        let isSyncingSidebar = false;
-        let isSyncingTimeline = false;
+        let isSyncingSidebar = false, isSyncingTimeline = false;
 
         sidebarBody.addEventListener('scroll', () => {
-            if (!isSyncingSidebar) {
-                isSyncingTimeline = true;
-                timelineContainer.scrollTop = sidebarBody.scrollTop;
-            }
+            if (!isSyncingSidebar) { isSyncingTimeline = true; timelineContainer.scrollTop = sidebarBody.scrollTop; }
             isSyncingSidebar = false;
         });
 
         timelineContainer.addEventListener('scroll', () => {
-            if (!isSyncingTimeline) {
-                isSyncingSidebar = true;
-                sidebarBody.scrollTop = timelineContainer.scrollTop;
-            }
+            if (!isSyncingTimeline) { isSyncingSidebar = true; sidebarBody.scrollTop = timelineContainer.scrollTop; }
             isSyncingTimeline = false;
         });
 
@@ -1353,10 +1120,7 @@
         async function initGantt() {
             if (localStorage.getItem('zen_gantt_auth') === 'true') {
                 const overlayEl = document.getElementById('pinOverlay');
-                if (overlayEl) {
-                    overlayEl.style.display = 'none';
-                    overlayEl.style.pointerEvents = 'none';
-                }
+                if (overlayEl) { overlayEl.style.display = 'none'; overlayEl.style.pointerEvents = 'none'; }
             }
 
             migrateData();
@@ -1367,17 +1131,12 @@
             if (dbClient) {
                 dbClient.channel('public:tasks')
                     .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, async () => {
-                        if (!hasPendingSave && !isUserTyping && !isInteractingWithUI && !isHoveringSidebar) {
-                            await loadTasksFromSupabase(false);
-                        }
-                    })
-                    .subscribe();
+                        if (!hasPendingSave && !isUserTyping && !isInteractingWithUI && !isHoveringSidebar) await loadTasksFromSupabase(false);
+                    }).subscribe();
             }
 
             setInterval(() => {
-                if (dbClient && !hasPendingSave && !isUserTyping && !isInteractingWithUI && !isHoveringSidebar) {
-                    loadTasksFromSupabase(false);
-                }
+                if (dbClient && !hasPendingSave && !isUserTyping && !isInteractingWithUI && !isHoveringSidebar) loadTasksFromSupabase(false);
             }, 3000);
         }
 
@@ -1399,19 +1158,14 @@
 
                 let monthHTML = '';
                 monthCounts.forEach((cnt, idx) => {
-                    if (cnt > 0) {
-                        const monthPercent = (cnt / 52) * 100;
-                        monthHTML += `<div class="month-cell" style="width: ${monthPercent}%;">${monthNames[idx]}</div>`;
-                    }
+                    if (cnt > 0) monthHTML += `<div class="month-cell" style="width: ${(cnt / 52) * 100}%;">${monthNames[idx]}</div>`;
                 });
 
                 const todayISO = formatDateISO(new Date());
                 let weekHTML = '';
-                const weekPercent = (1 / 52) * 100;
-
                 weeks.forEach(w => {
                     const isCurr = (todayISO >= w.startDateStr && todayISO <= w.endDateStr);
-                    weekHTML += `<div class="week-cell ${isCurr ? 'current' : ''}" style="width: ${weekPercent}%;" title="minggu ${w.index}: ${w.startDateStr} s/d ${w.endDateStr}">${w.dayLabel}</div>`;
+                    weekHTML += `<div class="week-cell ${isCurr ? 'current' : ''}" style="width: ${(1 / 52) * 100}%;" title="minggu ${w.index}: ${w.startDateStr} s/d ${w.endDateStr}">${w.dayLabel}</div>`;
                 });
 
                 monthsRow.innerHTML = monthHTML;
@@ -1419,28 +1173,19 @@
 
             } else {
                 weeksRow.style.display = 'none';
-                let yearsHTML = '';
-                let quarterHTML = '';
-                
+                let yearsHTML = '', quarterHTML = '';
                 for (let y = 0; y < 5; y++) {
-                    const yr = selectedYear + y;
-                    yearsHTML += `<div class="year-cell" style="width: 20%;">${yr}</div>`;
-                    for (let q = 1; q <= 4; q++) {
-                        quarterHTML += `<div class="month-cell" style="width: 5%;">q${q}</div>`;
-                    }
+                    yearsHTML += `<div class="year-cell" style="width: 20%;">${selectedYear + y}</div>`;
+                    for (let q = 1; q <= 4; q++) quarterHTML += `<div class="month-cell" style="width: 5%;">q${q}</div>`;
                 }
-
                 yearsRow.innerHTML = yearsHTML;
                 monthsRow.innerHTML = quarterHTML;
             }
         }
 
         function getSubtreeRange(index) {
-            let parentLevel = tasks[index].level;
-            let end = index;
-            while (end + 1 < tasks.length && tasks[end + 1].level > parentLevel) {
-                end++;
-            }
+            let parentLevel = tasks[index].level, end = index;
+            while (end + 1 < tasks.length && tasks[end + 1].level > parentLevel) end++;
             return { start: index, end: end, count: end - index + 1 };
         }
 
@@ -1449,9 +1194,7 @@
             tasks[0].level = 0; 
             for (let i = 1; i < tasks.length; i++) {
                 const maxAllowed = tasks[i - 1].level + 1;
-                if (tasks[i].level > maxAllowed) {
-                    tasks[i].level = maxAllowed;
-                }
+                if (tasks[i].level > maxAllowed) tasks[i].level = maxAllowed;
             }
         }
 
@@ -1471,18 +1214,15 @@
             if (isParent(index)) {
                 let parentLevel = tasks[index].level;
                 for (let i = index + 1; i < tasks.length; i++) {
-                    if (tasks[i].level > parentLevel) {
-                        tasks[i].completed = newState;
-                    } else {
-                        break;
-                    }
+                    if (tasks[i].level > parentLevel) tasks[i].completed = newState;
+                    else break;
                 }
             }
-
             renderContent();
         }
 
-        function addInterval(index) {
+        function addInterval(index, e) {
+            if (e) e.stopPropagation();
             if (viewerMode) return;
             if (!tasks[index].intervals) tasks[index].intervals = [];
             
@@ -1491,10 +1231,7 @@
                 return;
             }
             
-            tasks[index].intervals.push({
-                start: `${selectedYear}-01-01`,
-                end: `${selectedYear}-01-07`
-            });
+            tasks[index].intervals.push({ start: `${selectedYear}-01-01`, end: `${selectedYear}-01-07` });
             renderContent();
         }
 
@@ -1517,7 +1254,7 @@
             let width = ((taskEnd - taskStart) / totalMs) * 100;
 
             if (left < 0) { width += left; left = 0; }
-            if (left + width > 100) { width = 100 - left; }
+            if (left + width > 100) width = 100 - left;
             if (width < 0.2) width = 0.2;
 
             return { leftPercent: left, widthPercent: width };
@@ -1525,10 +1262,7 @@
 
         function renderContent(skipAutoUpdate = false) {
             processHybridTimelineEngine();
-            
-            if (!skipAutoUpdate) {
-                saveTasksToStorage();
-            }
+            if (!skipAutoUpdate) saveTasksToStorage();
 
             const sidebar = document.getElementById('sidebarBody');
             const timeline = document.getElementById('timelineRowsContainer');
@@ -1540,8 +1274,7 @@
                 return;
             }
 
-            let sidebarHTML = '';
-            let timelineHTML = '';
+            let sidebarHTML = '', timelineHTML = '';
 
             tasks.forEach((task, index) => {
                 if (isAncestorCollapsed(index)) return;
@@ -1555,7 +1288,6 @@
                     : `<span class="toggle-btn-placeholder"></span>`;
 
                 const editableAttr = viewerMode ? '' : `contenteditable="true" spellcheck="false" onfocus="handleTaskFocus(${index})" onblur="commitTaskName(${index}, this)" onkeydown="handleTaskKeydown(event, ${index}, this)"`;
-                
                 const dragHandleAttrs = viewerMode ? 'style="display:none;"' : `draggable="true" ondragstart="dragStart(event, ${index})"`;
                 const dragOverAttrs = viewerMode ? '' : `ondragover="dragOver(event, ${index})" ondrop="drop(event, ${index})" ondragleave="dragLeave(event)"`;
 
@@ -1572,7 +1304,9 @@
                     ? `<span class="conflict-tag sans-font" title="Terdapat bar yang saling tumpang tindih (overlap) dalam card ini!">KONFLIK</span>`
                     : '';
 
-                const addIntervalBtnHTML = viewerMode ? '' : `<span class="add-interval-btn" onclick="addInterval(${index})" title="tambah interval bar">+</span>`;
+                const addIntervalBtnHTML = (!viewerMode && task.intervals.length < MAX_INTERVALS_LIMIT) 
+                    ? `<button class="action-btn" onclick="addInterval(${index}, event)" title="tambah interval bar">+</button>` 
+                    : '';
 
                 sidebarHTML += `
                     <div class="task-row-container">
@@ -1581,13 +1315,13 @@
                             <div class="task-content-inner" style="padding-left: ${6 + indent}px;">
                                 <span class="drag-handle" ${dragHandleAttrs} title="drag task">${ICONS.drag}</span>
                                 ${toggleIconHTML}
-                                ${addIntervalBtnHTML}
                                 <span class="task-name-text" ${editableAttr}>${task.name}</span>
                                 ${modeBadgeHTML}
                                 ${conflictBadgeHTML}
                                 <div class="task-actions">
                                     <button class="action-btn check ${task.completed ? 'active' : ''}" onclick="toggleCompleteTask(${index}, event)" title="centang/coret task">${ICONS.check}</button>
-                                    <button class="action-btn" onclick="openNotes(${index}, event)" title="catatan">${ICONS.note}</button>
+                                    ${addIntervalBtnHTML}
+                                    <button class="action-btn" onclick="openNotes(${index}, event)" title="catatan & interval">${ICONS.note}</button>
                                     <button class="action-btn" onclick="toggleTaskVisibility(${index}, event)" title="${task.hidden ? 'tampilkan bar' : 'sembunyikan bar'}">${task.hidden ? ICONS.eyeOff : ICONS.eye}</button>
                                     ${viewerMode ? '' : `<button class="action-btn del" onclick="deleteTask(${index}, event)" title="hapus">${ICONS.trash}</button>`}
                                 </div>
@@ -1602,15 +1336,12 @@
 
                 let gridLines = '';
                 const lineCount = (viewMode === '1year') ? 52 : 20;
-                for(let l = 0; l < lineCount; l++) {
-                    gridLines += `<div class="grid-bg-line" style="left: ${(l / lineCount) * 100}%;"></div>`;
-                }
+                for(let l = 0; l < lineCount; l++) gridLines += `<div class="grid-bg-line" style="left: ${(l / lineCount) * 100}%;"></div>`;
 
                 let barsHTML = '';
                 if (!effectivelyHidden && task.intervals) {
                     task.intervals.forEach((interval, intIndex) => {
                         const pos = getTaskPosition(interval.start, interval.end);
-                        
                         let handles = (!isPar && !viewerMode) || (isPar && task.mode === 'MANUAL' && !viewerMode) ? `<div class="resizer left" onmousedown="initAction(event, ${index}, 'resize-left', ${intIndex})"></div><div class="resizer right" onmousedown="initAction(event, ${index}, 'resize-right', ${intIndex})"></div>` : '';
                         let moveEvent = (!isPar && !viewerMode) || (isPar && task.mode === 'MANUAL' && !viewerMode) ? `onmousedown="initAction(event, ${index}, 'move', ${intIndex})"` : '';
 
@@ -1623,12 +1354,7 @@
                     });
                 }
 
-                timelineHTML += `
-                    <div class="timeline-row-lane">
-                        ${gridLines}
-                        ${barsHTML}
-                    </div>
-                `;
+                timelineHTML += `<div class="timeline-row-lane">${gridLines}${barsHTML}</div>`;
             });
 
             const todayStr = formatDateISO(new Date());
@@ -1642,9 +1368,7 @@
             lastRenderedTasksJSON = JSON.stringify(tasks);
         }
 
-        function handleTaskFocus(index) {
-            isUserTyping = true;
-        }
+        function handleTaskFocus() { isUserTyping = true; }
 
         function handleTaskKeydown(e, index, el) {
             if (e.key === 'Enter' || e.key === 'Escape') {
@@ -1659,32 +1383,20 @@
             if (newName !== "") {
                 tasks[index].name = newName;
                 renderContent();
-            } else {
-                el.innerText = tasks[index].name;
-            }
+            } else el.innerText = tasks[index].name;
         }
 
         function insertTaskAt(index, e) {
             if (e) e.stopPropagation();
             if (viewerMode) return;
-            let inheritLevel = 0;
-            if (index > 0 && tasks[index - 1]) {
-                inheritLevel = tasks[index - 1].level;
-            }
-            
+            const inheritLevel = (index > 0 && tasks[index - 1]) ? tasks[index - 1].level : 0;
             const todayStr = formatDateISO(new Date());
+
             tasks.splice(index, 0, { 
-                name: "pekerjaan baru", 
-                level: inheritLevel, 
-                mode: 'MANUAL',
+                name: "pekerjaan baru", level: inheritLevel, mode: 'MANUAL',
                 intervals: [{ start: todayStr, end: addDays(todayStr, 14) }],
-                calculatedStart: null,
-                calculatedEnd: null,
-                hasConflict: false,
-                notes: "",
-                collapsed: false,
-                completed: false,
-                hidden: false
+                calculatedStart: null, calculatedEnd: null, hasConflict: false,
+                notes: "", collapsed: false, completed: false, hidden: false
             });
             sanitizeHierarchy();
             renderContent();
@@ -1693,17 +1405,51 @@
         function openNotes(index, e) {
             if (e) e.stopPropagation();
             currentEditingIndex = index;
-            document.getElementById('modalTitle').innerText = `catatan: ${tasks[index].name}`;
+            document.getElementById('modalTitle').innerText = `detail: ${tasks[index].name}`;
             document.getElementById('modalTextarea').value = tasks[index].notes || "";
+            renderIntervalsEditor(index);
             document.getElementById('notesModal').classList.add('active');
         }
 
-        function closeModal() {
-            document.getElementById('notesModal').classList.remove('active');
-            currentEditingIndex = null;
+        function renderIntervalsEditor(index) {
+            const container = document.getElementById('intervalsEditorContainer');
+            const task = tasks[index];
+            
+            if (!task.intervals || task.intervals.length === 0) {
+                container.innerHTML = `<div style="font-size: 0.8rem; color: var(--muted-color);">tidak ada interval aktif.</div>`;
+                return;
+            }
+
+            let html = '';
+            task.intervals.forEach((inv, i) => {
+                html += `
+                    <div style="display: flex; align-items: center; gap: 6px; background: var(--bg-color); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color);">
+                        <span style="font-size: 0.75rem; width: 20px;">#${i+1}</span>
+                        <input type="date" value="${inv.start}" id="modalIntervalStart_${i}" style="background: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 3px; padding: 2px 4px; font-size: 0.8rem;" onchange="updateModalInterval(${index}, ${i})">
+                        <span>s/d</span>
+                        <input type="date" value="${inv.end}" id="modalIntervalEnd_${i}" style="background: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 3px; padding: 2px 4px; font-size: 0.8rem;" onchange="updateModalInterval(${index}, ${i})">
+                        ${task.intervals.length > 1 ? `<button class="action-btn del" type="button" onclick="removeInterval(${index}, ${i})" title="hapus interval ini">${ICONS.trash}</button>` : `<span style="font-size:0.7rem; color:var(--muted-color);">(min 1)</span>`}
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
         }
 
-        function closeModalOnOverlay(e) { if (e.target.id === 'notesModal') closeModal(); }
+        function updateModalInterval(taskIndex, intIndex) {
+            const startVal = document.getElementById(`modalIntervalStart_${intIndex}`).value;
+            const endVal = document.getElementById(`modalIntervalEnd_${intIndex}`).value;
+            if (tasks[taskIndex].intervals[intIndex]) {
+                tasks[taskIndex].intervals[intIndex].start = startVal;
+                tasks[taskIndex].intervals[intIndex].end = endVal;
+            }
+        }
+
+        function removeInterval(taskIndex, intIndex) {
+            if (tasks[taskIndex].intervals.length > 1) {
+                tasks[taskIndex].intervals.splice(intIndex, 1);
+                renderIntervalsEditor(taskIndex);
+            } else alert("card minimal harus memiliki 1 interval.");
+        }
 
         function saveNotes() {
             if (currentEditingIndex !== null && !viewerMode) {
@@ -1713,6 +1459,13 @@
             closeModal();
         }
 
+        function closeModal() {
+            document.getElementById('notesModal').classList.remove('active');
+            currentEditingIndex = null;
+        }
+
+        function closeModalOnOverlay(e) { if (e.target.id === 'notesModal') closeModal(); }
+
         async function deleteTask(index, e) {
             if (e) e.stopPropagation();
             if (viewerMode) return;
@@ -1720,10 +1473,8 @@
             const deletedTasks = tasks.splice(range.start, range.count);
             
             if (dbClient) {
-                const deletedIds = deletedTasks.map(t => t.id).filter(id => id);
-                if (deletedIds.length > 0) {
-                    await dbClient.from('tasks').delete().in('id', deletedIds);
-                }
+                const deletedIds = deletedTasks.map(t => t.id).filter(Boolean);
+                if (deletedIds.length > 0) await dbClient.from('tasks').delete().in('id', deletedIds);
             }
 
             sanitizeHierarchy();
@@ -1736,7 +1487,7 @@
             e.dataTransfer.effectAllowed = 'move'; 
         }
 
-        function dragOver(e, targetIndex) {
+        function dragOver(e) {
             if (viewerMode) return;
             e.preventDefault();
             const row = e.currentTarget;
@@ -1744,58 +1495,39 @@
             const relY = e.clientY - rect.top;
 
             row.classList.remove('drag-over-top', 'drag-over-bottom', 'drag-over-child');
-
-            if (relY < rect.height * 0.33) {
-                row.classList.add('drag-over-top');
-            } else if (relY < rect.height * 0.66) {
-                row.classList.add('drag-over-child');
-            } else {
-                row.classList.add('drag-over-bottom');
-            }
+            if (relY < rect.height * 0.33) row.classList.add('drag-over-top');
+            else if (relY < rect.height * 0.66) row.classList.add('drag-over-child');
+            else row.classList.add('drag-over-bottom');
         }
 
         function dragLeave(e) {
-            if (viewerMode) return;
-            e.currentTarget.classList.remove('drag-over-top', 'drag-over-bottom', 'drag-over-child');
+            if (!viewerMode) e.currentTarget.classList.remove('drag-over-top', 'drag-over-bottom', 'drag-over-child');
         }
         
         function drop(e, targetIndex) {
-            if (viewerMode) return;
+            if (viewerMode || draggedTaskIndex === null) return;
             e.preventDefault();
             const row = e.currentTarget;
             row.classList.remove('drag-over-top', 'drag-over-bottom', 'drag-over-child');
-            
-            if (draggedTaskIndex === null) return;
 
             const draggedRange = getSubtreeRange(draggedTaskIndex);
             if (targetIndex >= draggedRange.start && targetIndex <= draggedRange.end) return;
 
             const draggedBlock = tasks.splice(draggedRange.start, draggedRange.count);
-
-            let adjustedTarget = targetIndex;
-            if (draggedTaskIndex < targetIndex) {
-                adjustedTarget -= draggedRange.count;
-            }
+            let adjustedTarget = (draggedTaskIndex < targetIndex) ? targetIndex - draggedRange.count : targetIndex;
 
             const rect = row.getBoundingClientRect();
-            const relY = e.clientY - rect.top;
-            const relX = e.clientX - rect.left;
+            const relY = e.clientY - rect.top, relX = e.clientX - rect.left;
 
             let insertAt = adjustedTarget;
             let targetTask = tasks[adjustedTarget];
 
-            if (relY < rect.height * 0.33) {
-                insertAt = adjustedTarget;
-            } else if (relY < rect.height * 0.66) {
-                insertAt = adjustedTarget + 1;
-            } else {
-                const targetSubtree = getSubtreeRange(adjustedTarget);
-                insertAt = targetSubtree.end + 1;
-            }
+            if (relY < rect.height * 0.33) insertAt = adjustedTarget;
+            else if (relY < rect.height * 0.66) insertAt = adjustedTarget + 1;
+            else insertAt = getSubtreeRange(adjustedTarget).end + 1;
 
             const maxAllowedLevel = insertAt > 0 ? tasks[insertAt - 1].level + 1 : 0;
             const mouseLevelCalculated = Math.max(0, Math.floor(Math.max(0, relX) / 14));
-
             let newParentLevel = Math.min(mouseLevelCalculated, maxAllowedLevel);
             
             if (relY >= rect.height * 0.33 && relY <= rect.height * 0.66 && targetTask) {
@@ -1803,13 +1535,9 @@
             }
 
             const levelDelta = newParentLevel - draggedBlock[0].level;
-
-            draggedBlock.forEach(t => {
-                t.level = Math.max(0, t.level + levelDelta);
-            });
+            draggedBlock.forEach(t => { t.level = Math.max(0, t.level + levelDelta); });
 
             tasks.splice(insertAt, 0, ...draggedBlock);
-
             sanitizeHierarchy();
             renderContent();
             draggedTaskIndex = null;
@@ -1820,9 +1548,7 @@
             e.preventDefault();
             setUIInteracting();
             
-            if (isParent(index) && tasks[index].mode === 'AUTO') {
-                tasks[index].mode = 'MANUAL';
-            }
+            if (isParent(index) && tasks[index].mode === 'AUTO') tasks[index].mode = 'MANUAL';
 
             activeBar = index; 
             actionType = action; 
@@ -1830,11 +1556,7 @@
             startMouseX = e.clientX;
             
             const targetInterval = tasks[index].intervals[intIndex];
-            childrenInitialStates = [{
-                idx: index,
-                start: targetInterval.start,
-                end: targetInterval.end
-            }];
+            childrenInitialStates = [{ idx: index, start: targetInterval.start, end: targetInterval.end }];
 
             document.addEventListener('mousemove', handleMouseMove);
             document.addEventListener('mouseup', stopAction);
@@ -1842,29 +1564,20 @@
 
         function handleMouseMove(e) {
             if (activeBar === null || viewerMode) return;
-            const container = document.getElementById('timelineRowsContainer');
-            const containerWidth = container.clientWidth;
-            
+            const containerWidth = document.getElementById('timelineRowsContainer').clientWidth;
             const deltaX = e.clientX - startMouseX;
             let daysShift = 0;
 
             if (viewMode === '1year') {
-                const pxPerDay = containerWidth / 365;
-                const rawDays = deltaX / pxPerDay;
-                const weeksShift = Math.round(rawDays / 7);
-                daysShift = weeksShift * 7;
+                daysShift = Math.round((deltaX / (containerWidth / 365)) / 7) * 7;
             } else {
-                const pxPerDay = containerWidth / 1826.25;
-                const rawDays = deltaX / pxPerDay;
-                const quarterShift = Math.round(rawDays / 91.25);
-                daysShift = Math.round(quarterShift * 91.25);
+                daysShift = Math.round(Math.round(deltaX / (containerWidth / 1826.25) / 91.25) * 91.25);
             }
 
             const initial = childrenInitialStates[0];
             if (!initial) return;
 
-            let task = tasks[activeBar];
-            let interval = task.intervals[activeIntervalIndex];
+            let interval = tasks[activeBar].intervals[activeIntervalIndex];
 
             if (actionType === 'move') {
                 interval.start = addDays(initial.start, daysShift);
@@ -1876,14 +1589,11 @@
                 let newE = addDays(initial.end, daysShift);
                 if (newE >= interval.start) interval.end = newE;
             }
-            
             renderContent(true);
         }
 
         function stopAction() { 
-            activeBar = null; 
-            actionType = null; 
-            activeIntervalIndex = null;
+            activeBar = actionType = activeIntervalIndex = null; 
             childrenInitialStates = [];
             document.removeEventListener('mousemove', handleMouseMove); 
             document.removeEventListener('mouseup', stopAction); 
@@ -1891,19 +1601,14 @@
         }
 
         function isParent(index) {
-            if (index >= tasks.length - 1) return false;
-            return tasks[index + 1].level > tasks[index].level;
+            return index < tasks.length - 1 && tasks[index + 1].level > tasks[index].level;
         }
 
         function getSubtaskIndicesList(parentIndex) {
-            let indices = [];
-            let parentLevel = tasks[parentIndex].level;
+            let indices = [], parentLevel = tasks[parentIndex].level;
             for (let i = parentIndex + 1; i < tasks.length; i++) {
-                if (tasks[i].level > parentLevel) {
-                    indices.push(i);
-                } else {
-                    break;
-                }
+                if (tasks[i].level > parentLevel) indices.push(i);
+                else break;
             }
             return indices;
         }
