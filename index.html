@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zen Gantt Chart</title>
+    <title>Zen Gantt Chart - Multi Bar with Overlap Conflict</title>
 
     <!-- Favicon & Mobile Homescreen Icons -->
     <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/tomoxyo157/custom-gantt-app/4ba018d3eba024c6c4e1aefe1f007789ba037e6f/white.png">
@@ -451,6 +451,16 @@
         .toggle-btn:hover { color: var(--text-color); }
         .toggle-btn-placeholder { width: 12px; display: inline-block; }
 
+        .add-interval-btn {
+            cursor: pointer;
+            color: var(--muted-color);
+            font-weight: bold;
+            font-size: 0.85rem;
+            padding: 0 4px;
+            user-select: none;
+        }
+        .add-interval-btn:hover { color: var(--text-color); }
+
         .task-name-text {
             flex: 1;
             font-size: 0.85rem;
@@ -595,17 +605,6 @@
             background-image: repeating-linear-gradient(45deg, rgba(220, 38, 38, 0.15), rgba(220, 38, 38, 0.15) 8px, transparent 8px, transparent 16px) !important;
         }
 
-        .ghost-actual-bar {
-            position: absolute;
-            height: 10px;
-            top: 24px;
-            border: 1px dashed var(--conflict-color);
-            background: rgba(220, 38, 38, 0.2);
-            border-radius: 2px;
-            z-index: 2;
-            pointer-events: none;
-        }
-
         .bar-content { flex: 1; padding: 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: move; }
 
         .resizer { width: 6px; height: 100%; position: absolute; top: 0; cursor: col-resize; z-index: 4; opacity: 0; transition: opacity 0.2s; }
@@ -701,9 +700,18 @@
         </div>
     </div>
 
+    <!-- Warning Modal untuk Max Interval -->
+    <div class="modal-overlay" id="warningModal">
+        <div class="modal-card" style="text-align: center;">
+            <h3 style="font-size: 1.1rem; margin-bottom: 10px;">Batas Sistem Tercapai</h3>
+            <p style="margin: 16px 0; color: var(--muted-color); font-size: 0.9rem;">Card ini sudah memiliki batas maksimal interval (15). Untuk performa, silakan tambahkan task baru.</p>
+            <button class="btn" onclick="document.getElementById('warningModal').classList.remove('active')">tutup</button>
+        </div>
+    </div>
+
     <header>
         <div class="header-title-wrapper">
-            <div class="header-title">Zen Gantt</div>
+            <div class="header-title">Zen Gantt - Multi Bar</div>
         </div>
 
         <div class="header-controls-center">
@@ -802,6 +810,7 @@
 
         const SUPABASE_URL = 'https://movcjscdntwckaslnumn.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vdmNqc2NkbnR3Y2thc2xudW1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUwNDU3ODUsImV4cCI6MjEwMDYyMTc4NX0.rGYGREApohqwSaArGr4DtZXeuUJ0OUE7QeOyNjpswv8';
+        const MAX_INTERVALS_LIMIT = 15;
 
         let dbClient = null;
         if (window.supabase && SUPABASE_URL !== '') {
@@ -813,6 +822,7 @@
         let draggedTaskIndex = null;
         let currentEditingIndex = null;
         let activeBar = null, actionType = null, startMouseX = 0;
+        let activeIntervalIndex = null;
         let childrenInitialStates = [];
         let viewerMode = false;
         let saveTimeout = null; 
@@ -881,7 +891,24 @@
             return weeks;
         }
 
-        let tasks = JSON.parse(localStorage.getItem('zen_gantt_tasks_v3')) || [];
+        let tasks = JSON.parse(localStorage.getItem('zen_gantt_tasks_multi')) || [];
+
+        function migrateData() {
+            tasks = tasks.map(t => {
+                if (!t.intervals) {
+                    if (t.startDate && t.endDate) {
+                        t.intervals = [{ start: t.startDate, end: t.endDate }];
+                    } else if (t.start_date && t.end_date) {
+                        t.intervals = [{ start: t.start_date, end: t.end_date }];
+                    } else {
+                        const todayStr = formatDateISO(new Date());
+                        t.intervals = [{ start: todayStr, end: addDays(todayStr, 7) }];
+                    }
+                }
+                return t;
+            });
+            localStorage.setItem('zen_gantt_tasks_multi', JSON.stringify(tasks));
+        }
 
         async function resetAppCache() {
             if (confirm("Lakukan reset cache & sync ulang data dari server?")) {
@@ -924,8 +951,7 @@
                         name: t.name,
                         level: t.level,
                         mode: t.mode || 'MANUAL',
-                        startDate: t.start_date || `${selectedYear}-01-05`,
-                        endDate: t.end_date || `${selectedYear}-01-25`,
+                        intervals: t.intervals || (t.start_date ? [{ start: t.start_date, end: t.end_date }] : [{ start: `${selectedYear}-01-01`, end: `${selectedYear}-01-07` }]),
                         calculatedStart: null,
                         calculatedEnd: null,
                         hasConflict: false,
@@ -944,7 +970,8 @@
                         tasks = loadedTasks;
                     }
 
-                    localStorage.setItem('zen_gantt_tasks_v3', JSON.stringify(tasks));
+                    migrateData();
+                    localStorage.setItem('zen_gantt_tasks_multi', JSON.stringify(tasks));
 
                     const currentTasksJSON = JSON.stringify(tasks);
                     if (currentTasksJSON !== lastRenderedTasksJSON) {
@@ -957,7 +984,7 @@
         }
 
         function saveTasksToStorage() {
-            localStorage.setItem('zen_gantt_tasks_v3', JSON.stringify(tasks));
+            localStorage.setItem('zen_gantt_tasks_multi', JSON.stringify(tasks));
             
             const statusEl = document.getElementById('saveStatus');
             if (statusEl) {
@@ -969,7 +996,6 @@
 
             if (saveTimeout) clearTimeout(saveTimeout);
 
-            // Autosave ditunda 1 menit (60.000 ms) dengan debouncing & batching
             saveTimeout = setTimeout(async () => {
                 if (statusEl) {
                     statusEl.innerText = "saving...";
@@ -986,14 +1012,15 @@
                     const existingTasks = [];
                     const newTasks = [];
 
-                    // Mengelompokkan payload menjadi batch massal
                     tasks.forEach((t, idx) => {
+                        const firstInterval = (t.intervals && t.intervals.length > 0) ? t.intervals[0] : { start: `${selectedYear}-01-01`, end: `${selectedYear}-01-07` };
                         const row = {
                             name: t.name,
                             level: t.level,
                             mode: t.mode || 'MANUAL',
-                            start_date: t.startDate,
-                            end_date: t.endDate,
+                            start_date: firstInterval.start,
+                            end_date: firstInterval.end,
+                            intervals: t.intervals,
                             notes: t.notes || "",
                             collapsed: t.collapsed || false,
                             completed: t.completed || false,
@@ -1009,7 +1036,6 @@
                         }
                     });
 
-                    // Batching Upsert untuk task lama
                     if (existingTasks.length > 0) {
                         const { error: upsertErr } = await dbClient
                             .from('tasks')
@@ -1018,7 +1044,6 @@
                         if (upsertErr) throw upsertErr;
                     }
 
-                    // Batching Insert untuk task baru
                     if (newTasks.length > 0) {
                         const rowsToInsert = newTasks.map(item => item.row);
                         const { data: insertedData, error: insertErr } = await dbClient
@@ -1035,7 +1060,7 @@
                                     tasks[localIdx].id = insertedItem.id;
                                 }
                             });
-                            localStorage.setItem('zen_gantt_tasks_v3', JSON.stringify(tasks));
+                            localStorage.setItem('zen_gantt_tasks_multi', JSON.stringify(tasks));
                         }
                     }
 
@@ -1052,13 +1077,26 @@
                 } finally {
                     hasPendingSave = false;
                 }
-            }, 60000); // Timer 1 menit (60.000 ms)
+            }, 60000);
         }
 
         function processHybridTimelineEngine() {
             if (tasks.length === 0) return;
 
             for (let i = tasks.length - 1; i >= 0; i--) {
+                let hasOverlapConflict = false;
+
+                // Deteksi tumpang tindih (overlap) antar interval dalam 1 card yang sama
+                if (tasks[i].intervals && tasks[i].intervals.length > 1) {
+                    const sortedIntervals = [...tasks[i].intervals].sort((a, b) => a.start.localeCompare(b.start));
+                    for (let j = 0; j < sortedIntervals.length - 1; j++) {
+                        if (sortedIntervals[j].end > sortedIntervals[j + 1].start) {
+                            hasOverlapConflict = true;
+                            break;
+                        }
+                    }
+                }
+
                 const childIndices = getSubtaskIndicesList(i);
 
                 if (childIndices.length > 0) {
@@ -1067,38 +1105,24 @@
 
                     childIndices.forEach(childIdx => {
                         const c = tasks[childIdx];
-                        const cStart = c.startDate;
-                        const cEnd = c.endDate;
-
-                        if (!minStart || cStart < minStart) minStart = cStart;
-                        if (!maxEnd || cEnd > maxEnd) maxEnd = cEnd;
+                        (c.intervals || []).forEach(iv => {
+                            if (!minStart || iv.start < minStart) minStart = iv.start;
+                            if (!maxEnd || iv.end > maxEnd) maxEnd = iv.end;
+                        });
                     });
 
                     tasks[i].calculatedStart = minStart;
                     tasks[i].calculatedEnd = maxEnd;
 
                     if (tasks[i].mode === 'AUTO') {
-                        if (minStart && maxEnd) {
-                            tasks[i].startDate = minStart;
-                            tasks[i].endDate = maxEnd;
-                        }
-                        tasks[i].hasConflict = false;
-                    } else {
-                        if (minStart && maxEnd) {
-                            if (minStart < tasks[i].startDate || maxEnd > tasks[i].endDate) {
-                                tasks[i].hasConflict = true;
-                            } else {
-                                tasks[i].hasConflict = false;
-                            }
-                        } else {
-                            tasks[i].hasConflict = false;
+                        if (minStart && maxEnd && tasks[i].intervals && tasks[i].intervals.length > 0) {
+                            tasks[i].intervals[0].start = minStart;
+                            tasks[i].intervals[0].end = maxEnd;
                         }
                     }
-                } else {
-                    tasks[i].calculatedStart = tasks[i].startDate;
-                    tasks[i].calculatedEnd = tasks[i].endDate;
-                    tasks[i].hasConflict = false;
                 }
+
+                tasks[i].hasConflict = hasOverlapConflict;
             }
         }
 
@@ -1335,6 +1359,7 @@
                 }
             }
 
+            migrateData();
             renderHeader();
             await loadTasksFromSupabase(true);
             renderContent(true);
@@ -1457,6 +1482,22 @@
             renderContent();
         }
 
+        function addInterval(index) {
+            if (viewerMode) return;
+            if (!tasks[index].intervals) tasks[index].intervals = [];
+            
+            if (tasks[index].intervals.length >= MAX_INTERVALS_LIMIT) {
+                document.getElementById('warningModal').classList.add('active');
+                return;
+            }
+            
+            tasks[index].intervals.push({
+                start: `${selectedYear}-01-01`,
+                end: `${selectedYear}-01-07`
+            });
+            renderContent();
+        }
+
         function getTaskPosition(sDateStr, eDateStr) {
             let tStart, tEnd;
             if (viewMode === '1year') {
@@ -1528,8 +1569,10 @@
                     : `<span style="font-size:0.62rem; color:var(--muted-color);">—</span>`;
 
                 const conflictBadgeHTML = task.hasConflict 
-                    ? `<span class="conflict-tag sans-font" title="Child melebihi target induk!">KONFLIK</span>`
+                    ? `<span class="conflict-tag sans-font" title="Terdapat bar yang saling tumpang tindih (overlap) dalam card ini!">KONFLIK</span>`
                     : '';
+
+                const addIntervalBtnHTML = viewerMode ? '' : `<span class="add-interval-btn" onclick="addInterval(${index})" title="tambah interval bar">+</span>`;
 
                 sidebarHTML += `
                     <div class="task-row-container">
@@ -1538,6 +1581,7 @@
                             <div class="task-content-inner" style="padding-left: ${6 + indent}px;">
                                 <span class="drag-handle" ${dragHandleAttrs} title="drag task">${ICONS.drag}</span>
                                 ${toggleIconHTML}
+                                ${addIntervalBtnHTML}
                                 <span class="task-name-text" ${editableAttr}>${task.name}</span>
                                 ${modeBadgeHTML}
                                 ${conflictBadgeHTML}
@@ -1562,32 +1606,27 @@
                     gridLines += `<div class="grid-bg-line" style="left: ${(l / lineCount) * 100}%;"></div>`;
                 }
 
-                let barHTML = '';
-                if (!effectivelyHidden) {
-                    const pos = getTaskPosition(task.startDate, task.endDate);
-                    
-                    let handles = (!isPar && !viewerMode) || (isPar && task.mode === 'MANUAL' && !viewerMode) ? `<div class="resizer left" onmousedown="initAction(event, ${index}, 'resize-left')"></div><div class="resizer right" onmousedown="initAction(event, ${index}, 'resize-right')"></div>` : '';
-                    let moveEvent = (!isPar && !viewerMode) || (isPar && task.mode === 'MANUAL' && !viewerMode) ? `onmousedown="initAction(event, ${index}, 'move')"` : '';
+                let barsHTML = '';
+                if (!effectivelyHidden && task.intervals) {
+                    task.intervals.forEach((interval, intIndex) => {
+                        const pos = getTaskPosition(interval.start, interval.end);
+                        
+                        let handles = (!isPar && !viewerMode) || (isPar && task.mode === 'MANUAL' && !viewerMode) ? `<div class="resizer left" onmousedown="initAction(event, ${index}, 'resize-left', ${intIndex})"></div><div class="resizer right" onmousedown="initAction(event, ${index}, 'resize-right', ${intIndex})"></div>` : '';
+                        let moveEvent = (!isPar && !viewerMode) || (isPar && task.mode === 'MANUAL' && !viewerMode) ? `onmousedown="initAction(event, ${index}, 'move', ${intIndex})"` : '';
 
-                    let ghostBarHTML = '';
-                    if (isPar && task.mode === 'MANUAL' && task.calculatedStart && task.calculatedEnd) {
-                        const posActual = getTaskPosition(task.calculatedStart, task.calculatedEnd);
-                        ghostBarHTML = `<div class="ghost-actual-bar" style="left: ${posActual.leftPercent}%; width: ${posActual.widthPercent}%;" title="Rentang Child Riil: ${task.calculatedStart} s/d ${task.calculatedEnd}"></div>`;
-                    }
-
-                    barHTML = `
-                        ${ghostBarHTML}
-                        <div class="task-bar ${isPar ? 'parent' : ''} ${task.hasConflict ? 'conflict-bar' : ''} ${task.completed ? 'completed-bar' : ''}" style="left: ${pos.leftPercent}%; width: ${pos.widthPercent}%;" title="${task.name} (${task.startDate} s/d ${task.endDate})">
-                            ${handles}
-                            <div class="bar-content" ${moveEvent}>${task.name}</div>
-                        </div>
-                    `;
+                        barsHTML += `
+                            <div class="task-bar ${isPar ? 'parent' : ''} ${task.hasConflict ? 'conflict-bar' : ''} ${task.completed ? 'completed-bar' : ''}" style="left: ${pos.leftPercent}%; width: ${pos.widthPercent}%;" title="${task.name} (${interval.start} s/d ${interval.end})">
+                                ${handles}
+                                <div class="bar-content" ${moveEvent}>${task.name}</div>
+                            </div>
+                        `;
+                    });
                 }
 
                 timelineHTML += `
                     <div class="timeline-row-lane">
                         ${gridLines}
-                        ${barHTML}
+                        ${barsHTML}
                     </div>
                 `;
             });
@@ -1638,8 +1677,7 @@
                 name: "pekerjaan baru", 
                 level: inheritLevel, 
                 mode: 'MANUAL',
-                startDate: todayStr,
-                endDate: addDays(todayStr, 14),
+                intervals: [{ start: todayStr, end: addDays(todayStr, 14) }],
                 calculatedStart: null,
                 calculatedEnd: null,
                 hasConflict: false,
@@ -1777,7 +1815,7 @@
             draggedTaskIndex = null;
         }
 
-        function initAction(e, index, action) {
+        function initAction(e, index, action, intIndex = 0) {
             if (viewerMode) return;
             e.preventDefault();
             setUIInteracting();
@@ -1788,19 +1826,15 @@
 
             activeBar = index; 
             actionType = action; 
+            activeIntervalIndex = intIndex;
             startMouseX = e.clientX;
             
-            const childIndices = getSubtaskIndicesList(index);
-            const groupIndices = [index, ...childIndices];
-            
-            childrenInitialStates = [];
-            groupIndices.forEach(gi => {
-                childrenInitialStates.push({
-                    idx: gi,
-                    startDate: tasks[gi].startDate,
-                    endDate: tasks[gi].endDate
-                });
-            });
+            const targetInterval = tasks[index].intervals[intIndex];
+            childrenInitialStates = [{
+                idx: index,
+                start: targetInterval.start,
+                end: targetInterval.end
+            }];
 
             document.addEventListener('mousemove', handleMouseMove);
             document.addEventListener('mouseup', stopAction);
@@ -1815,36 +1849,32 @@
             let daysShift = 0;
 
             if (viewMode === '1year') {
-                // Rentang 1 Tahun (365 hari): Snapping per 1 minggu (7 hari)
                 const pxPerDay = containerWidth / 365;
                 const rawDays = deltaX / pxPerDay;
                 const weeksShift = Math.round(rawDays / 7);
                 daysShift = weeksShift * 7;
             } else {
-                // Rentang 5 Tahun (5 * 365.25 = 1826.25 hari): Snapping per 1 kuartal (~91.25 hari)
                 const pxPerDay = containerWidth / 1826.25;
                 const rawDays = deltaX / pxPerDay;
                 const quarterShift = Math.round(rawDays / 91.25);
                 daysShift = Math.round(quarterShift * 91.25);
             }
 
-            const parentInitial = childrenInitialStates.find(s => s.idx === activeBar);
-            if (!parentInitial) return;
+            const initial = childrenInitialStates[0];
+            if (!initial) return;
+
+            let task = tasks[activeBar];
+            let interval = task.intervals[activeIntervalIndex];
 
             if (actionType === 'move') {
-                childrenInitialStates.forEach(state => {
-                    let taskObj = tasks[state.idx];
-                    taskObj.startDate = addDays(state.startDate, daysShift);
-                    taskObj.endDate = addDays(state.endDate, daysShift);
-                });
+                interval.start = addDays(initial.start, daysShift);
+                interval.end = addDays(initial.end, daysShift);
             } else if (actionType === 'resize-left') {
-                let task = tasks[activeBar];
-                let newS = addDays(parentInitial.startDate, daysShift);
-                if (newS <= task.endDate) task.startDate = newS;
+                let newS = addDays(initial.start, daysShift);
+                if (newS <= interval.end) interval.start = newS;
             } else if (actionType === 'resize-right') {
-                let task = tasks[activeBar];
-                let newE = addDays(parentInitial.endDate, daysShift);
-                if (newE >= task.startDate) task.endDate = newE;
+                let newE = addDays(initial.end, daysShift);
+                if (newE >= interval.start) interval.end = newE;
             }
             
             renderContent(true);
@@ -1853,6 +1883,7 @@
         function stopAction() { 
             activeBar = null; 
             actionType = null; 
+            activeIntervalIndex = null;
             childrenInitialStates = [];
             document.removeEventListener('mousemove', handleMouseMove); 
             document.removeEventListener('mouseup', stopAction); 
