@@ -961,18 +961,24 @@
             
             const statusEl = document.getElementById('saveStatus');
             if (statusEl) {
-                statusEl.innerText = "saving...";
-                statusEl.style.color = "var(--text-color)";
+                statusEl.innerText = "pending save (1m)...";
+                statusEl.style.color = "var(--muted-color)";
             }
 
             hasPendingSave = true;
 
             if (saveTimeout) clearTimeout(saveTimeout);
 
+            // Autosave ditunda 1 menit (60.000 ms) dengan debouncing & batching
             saveTimeout = setTimeout(async () => {
+                if (statusEl) {
+                    statusEl.innerText = "saving...";
+                    statusEl.style.color = "var(--text-color)";
+                }
+
                 if (!dbClient) {
                     hasPendingSave = false;
-                    if (statusEl) { statusEl.innerText = "saved"; statusEl.style.color = "var(--muted-color)"; }
+                    if (statusEl) { statusEl.innerText = "saved (local)"; statusEl.style.color = "var(--muted-color)"; }
                     return;
                 }
 
@@ -980,6 +986,7 @@
                     const existingTasks = [];
                     const newTasks = [];
 
+                    // Mengelompokkan payload menjadi batch massal
                     tasks.forEach((t, idx) => {
                         const row = {
                             name: t.name,
@@ -1002,6 +1009,7 @@
                         }
                     });
 
+                    // Batching Upsert untuk task lama
                     if (existingTasks.length > 0) {
                         const { error: upsertErr } = await dbClient
                             .from('tasks')
@@ -1010,6 +1018,7 @@
                         if (upsertErr) throw upsertErr;
                     }
 
+                    // Batching Insert untuk task baru
                     if (newTasks.length > 0) {
                         const rowsToInsert = newTasks.map(item => item.row);
                         const { data: insertedData, error: insertErr } = await dbClient
@@ -1043,7 +1052,7 @@
                 } finally {
                     hasPendingSave = false;
                 }
-            }, 500);
+            }, 60000); // Timer 1 menit (60.000 ms)
         }
 
         function processHybridTimelineEngine() {
@@ -1771,9 +1780,8 @@
         function initAction(e, index, action) {
             if (viewerMode) return;
             e.preventDefault();
-            setUIInteracting(); // Mencegah fetch/sync Supabase menimpa saat drag[cite: 1]
+            setUIInteracting();
             
-            // Jika parent berstatus AUTO, ubah ke MANUAL agar geseran tidak langsung di-reset engine[cite: 1]
             if (isParent(index) && tasks[index].mode === 'AUTO') {
                 tasks[index].mode = 'MANUAL';
             }
@@ -1807,12 +1815,17 @@
             let daysShift = 0;
 
             if (viewMode === '1year') {
+                // Rentang 1 Tahun (365 hari): Snapping per 1 minggu (7 hari)
                 const pxPerDay = containerWidth / 365;
-                daysShift = Math.round(deltaX / pxPerDay);
+                const rawDays = deltaX / pxPerDay;
+                const weeksShift = Math.round(rawDays / 7);
+                daysShift = weeksShift * 7;
             } else {
-                // Tampilan 5 tahun (5 * 365 hari = 1825 hari)[cite: 1]
-                const pxPerDay = containerWidth / 1825;
-                daysShift = Math.round(deltaX / pxPerDay);
+                // Rentang 5 Tahun (5 * 365.25 = 1826.25 hari): Snapping per 1 kuartal (~91.25 hari)
+                const pxPerDay = containerWidth / 1826.25;
+                const rawDays = deltaX / pxPerDay;
+                const quarterShift = Math.round(rawDays / 91.25);
+                daysShift = Math.round(quarterShift * 91.25);
             }
 
             const parentInitial = childrenInitialStates.find(s => s.idx === activeBar);
