@@ -257,7 +257,6 @@
         .btn-icon.active-mode { background: var(--text-color); color: var(--bg-color); border-color: var(--text-color); }
         .btn-icon svg { width: 14px; height: 14px; stroke-width: 1.8; }
 
-        /* REVISI SWITCHER TAHUN: Menghilangkan spinner bawaan & membuatnya lebih compact diapit panah */
         .year-selector-group {
             display: flex;
             align-items: center;
@@ -720,7 +719,6 @@
                 </div>
             </div>
 
-            <!-- Switcher Tahun yang Lebih Compact & Tanpa Spinner Bawaan -->
             <div class="year-selector-group sans-font">
                 <button class="btn-icon-nav" onclick="navigateYear(-1)" title="tahun sebelumnya">
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
@@ -1773,6 +1771,13 @@
         function initAction(e, index, action) {
             if (viewerMode) return;
             e.preventDefault();
+            setUIInteracting(); // Mencegah fetch/sync Supabase menimpa saat drag[cite: 1]
+            
+            // Jika parent berstatus AUTO, ubah ke MANUAL agar geseran tidak langsung di-reset engine[cite: 1]
+            if (isParent(index) && tasks[index].mode === 'AUTO') {
+                tasks[index].mode = 'MANUAL';
+            }
+
             activeBar = index; 
             actionType = action; 
             startMouseX = e.clientX;
@@ -1798,15 +1803,16 @@
             const container = document.getElementById('timelineRowsContainer');
             const containerWidth = container.clientWidth;
             
+            const deltaX = e.clientX - startMouseX;
             let daysShift = 0;
+
             if (viewMode === '1year') {
-                const pxPerWeek = containerWidth / 52;
-                const weekShift = Math.round((e.clientX - startMouseX) / pxPerWeek);
-                daysShift = weekShift * 7;
+                const pxPerDay = containerWidth / 365;
+                daysShift = Math.round(deltaX / pxPerDay);
             } else {
-                const pxPerQuarter = containerWidth / 20;
-                const quarterShift = Math.round((e.clientX - startMouseX) / pxPerQuarter);
-                daysShift = quarterShift * 91;
+                // Tampilan 5 tahun (5 * 365 hari = 1825 hari)[cite: 1]
+                const pxPerDay = containerWidth / 1825;
+                daysShift = Math.round(deltaX / pxPerDay);
             }
 
             const parentInitial = childrenInitialStates.find(s => s.idx === activeBar);
