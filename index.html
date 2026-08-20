@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title></title>
+    <title>zen gantt chart</title>
 
     <!-- Favicon & PWA -->
     <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/tomoxyo157/custom-gantt-app/4ba018d3eba024c6c4e1aefe1f007789ba037e6f/white.png">
@@ -422,10 +422,25 @@
             pointer-events: none; 
         }
         
-        .task-row:hover .task-actions, body.viewer-mode-active .task-row .task-actions { 
+        .task-row:hover .task-actions { 
             opacity: 1; 
             visibility: visible;
             pointer-events: auto; 
+        }
+        
+        /* Hide editing UI in viewer mode */
+        body.viewer-mode-active .task-row .task-actions,
+        body.viewer-mode-active .drag-handle,
+        body.viewer-mode-active .plus-btn,
+        body.viewer-mode-active .insert-trigger {
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+        }
+        
+        body.viewer-mode-active .task-row:hover .task-actions {
+            opacity: 0 !important;
+            visibility: hidden !important;
         }
         
         .action-btn {
@@ -1057,6 +1072,8 @@
                 lockIcon.outerHTML = `<svg id="lockIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>`;
                 root.classList.remove('viewer-mode-active');
             }
+            // INSTANT RE-RENDER: buat UI berubah segera (hover buttons, drag handles, dll)
+            renderContent();
         }
 
         function toggleViewMode() {
