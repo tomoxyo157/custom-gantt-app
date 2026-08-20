@@ -648,6 +648,10 @@
 
         <div class="header-controls-right sans-font">
             <span class="save-status-badge" id="saveStatus">saved</span>
+
+            <button class="btn-icon" onclick="forceSaveNow()" title="save now">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            </button>
             
             <button class="btn-icon" onclick="goToToday()" title="today">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><circle cx="12" cy="15" r="1.5" fill="currentColor"/></svg>
@@ -852,53 +856,66 @@
             hasPendingSave = true;
             if (saveTimeout) clearTimeout(saveTimeout);
 
-            saveTimeout = setTimeout(async () => {
-                if (statusEl) { statusEl.innerText = "saving..."; statusEl.style.color = "var(--text-color)"; }
+            saveTimeout = setTimeout(() => { performSaveNow(); }, 60000);
+        }
 
-                if (!dbClient) {
-                    hasPendingSave = false;
-                    if (statusEl) { statusEl.innerText = "saved (local)"; statusEl.style.color = "var(--muted-color)"; }
-                    return;
+        async function performSaveNow() {
+            if (saveTimeout) { clearTimeout(saveTimeout); saveTimeout = null; }
+            const statusEl = document.getElementById('saveStatus');
+            if (statusEl) { statusEl.innerText = "saving..."; statusEl.style.color = "var(--text-color)"; }
+
+            if (!dbClient) {
+                hasPendingSave = false;
+                if (statusEl) { statusEl.innerText = "saved (local)"; statusEl.style.color = "var(--muted-color)"; }
+                return;
+            }
+
+            try {
+                const existingTasks = [], newTasks = [];
+                tasks.forEach((t, idx) => {
+                    const firstInterval = (t.intervals && t.intervals.length > 0) ? t.intervals[0] : { start: `${selectedYear}-01-01`, end: `${selectedYear}-01-07` };
+                    const row = {
+                        name: t.name, level: t.level, mode: t.mode || 'MANUAL',
+                        start_date: firstInterval.start, end_date: firstInterval.end,
+                        intervals: t.intervals, notes: t.notes || "",
+                        collapsed: t.collapsed || false, completed: t.completed || false,
+                        hidden: t.hidden || false, sort_order: idx
+                    };
+
+                    if (t.id) { row.id = t.id; existingTasks.push(row); }
+                    else newTasks.push({ localIdx: idx, row: row });
+                });
+
+                if (existingTasks.length > 0) {
+                    const { error } = await dbClient.from('tasks').upsert(existingTasks, { onConflict: 'id' });
+                    if (error) throw error;
                 }
 
-                try {
-                    const existingTasks = [], newTasks = [];
-                    tasks.forEach((t, idx) => {
-                        const firstInterval = (t.intervals && t.intervals.length > 0) ? t.intervals[0] : { start: `${selectedYear}-01-01`, end: `${selectedYear}-01-07` };
-                        const row = {
-                            name: t.name, level: t.level, mode: t.mode || 'MANUAL',
-                            start_date: firstInterval.start, end_date: firstInterval.end,
-                            intervals: t.intervals, notes: t.notes || "",
-                            collapsed: t.collapsed || false, completed: t.completed || false,
-                            hidden: t.hidden || false, sort_order: idx
-                        };
-
-                        if (t.id) { row.id = t.id; existingTasks.push(row); }
-                        else newTasks.push({ localIdx: idx, row: row });
-                    });
-
-                    if (existingTasks.length > 0) {
-                        const { error } = await dbClient.from('tasks').upsert(existingTasks, { onConflict: 'id' });
-                        if (error) throw error;
+                if (newTasks.length > 0) {
+                    const { data, error } = await dbClient.from('tasks').insert(newTasks.map(item => item.row)).select();
+                    if (error) throw error;
+                    if (data) {
+                        data.forEach((insertedItem, i) => {
+                            if (tasks[newTasks[i].localIdx]) tasks[newTasks[i].localIdx].id = insertedItem.id;
+                        });
+                        localStorage.setItem('zen_gantt_tasks_multi', JSON.stringify(tasks));
                     }
+                }
 
-                    if (newTasks.length > 0) {
-                        const { data, error } = await dbClient.from('tasks').insert(newTasks.map(item => item.row)).select();
-                        if (error) throw error;
-                        if (data) {
-                            data.forEach((insertedItem, i) => {
-                                if (tasks[newTasks[i].localIdx]) tasks[newTasks[i].localIdx].id = insertedItem.id;
-                            });
-                            localStorage.setItem('zen_gantt_tasks_multi', JSON.stringify(tasks));
-                        }
-                    }
+                if (statusEl) { statusEl.innerText = "saved"; statusEl.style.color = "var(--muted-color)"; }
+            } catch (e) {
+                console.error("Gagal simpan ke Supabase:", e);
+                if (statusEl) { statusEl.innerText = "error saving"; statusEl.style.color = "var(--red-line)"; }
+            } finally { hasPendingSave = false; }
+        }
 
-                    if (statusEl) { statusEl.innerText = "saved"; statusEl.style.color = "var(--muted-color)"; }
-                } catch (e) {
-                    console.error("Gagal simpan ke Supabase:", e);
-                    if (statusEl) { statusEl.innerText = "error saving"; statusEl.style.color = "var(--red-line)"; }
-                } finally { hasPendingSave = false; }
-            }, 60000);
+        function forceSaveNow() {
+            if (!hasPendingSave) {
+                const statusEl = document.getElementById('saveStatus');
+                if (statusEl) { statusEl.innerText = "saved"; statusEl.style.color = "var(--muted-color)"; }
+                return;
+            }
+            performSaveNow();
         }
 
         function processHybridTimelineEngine() {
