@@ -1270,27 +1270,41 @@
         }
 
         function getTaskPosition(sDateStr, eDateStr) {
-            let tStart, tEnd;
+            let left, width;
+
             if (viewMode === '1year') {
                 const yearWeeks = getYearWeeks(selectedYear);
-                tStart = new Date(yearWeeks[0].startDateStr + 'T00:00:00');
-                tEnd = new Date(yearWeeks[51].endDateStr + 'T23:59:59');
+                const totalWeeks = yearWeeks.length;
+
+                let startIdx = yearWeeks.findIndex(w => sDateStr >= w.startDateStr && sDateStr <= w.endDateStr);
+                if (startIdx === -1) startIdx = (sDateStr < yearWeeks[0].startDateStr) ? 0 : totalWeeks - 1;
+
+                let endIdx = yearWeeks.findIndex(w => eDateStr >= w.startDateStr && eDateStr <= w.endDateStr);
+                if (endIdx === -1) endIdx = (eDateStr < yearWeeks[0].startDateStr) ? 0 : totalWeeks - 1;
+
+                if (endIdx < startIdx) endIdx = startIdx;
+
+                left = (startIdx / totalWeeks) * 100;
+                width = ((endIdx - startIdx + 1) / totalWeeks) * 100;
             } else {
-                tStart = new Date(`${selectedYear}-01-01T00:00:00`);
-                tEnd = new Date(`${selectedYear + 4}-12-31T23:59:59`);
+                const totalQuarters = 20;
+                const clampQ = (q) => Math.max(0, Math.min(totalQuarters - 1, q));
+                const getQ = (dateStr) => {
+                    const d = new Date(dateStr + 'T00:00:00');
+                    const yearOffset = d.getFullYear() - selectedYear;
+                    const quarter = Math.floor(d.getMonth() / 3);
+                    return clampQ(yearOffset * 4 + quarter);
+                };
+
+                let startIdx = getQ(sDateStr);
+                let endIdx = getQ(eDateStr);
+                if (endIdx < startIdx) endIdx = startIdx;
+
+                left = (startIdx / totalQuarters) * 100;
+                width = ((endIdx - startIdx + 1) / totalQuarters) * 100;
             }
 
-            const totalMs = tEnd - tStart;
-            const taskStart = new Date(sDateStr + 'T00:00:00');
-            const taskEnd = new Date(eDateStr + 'T23:59:59');
-
-            let left = ((taskStart - tStart) / totalMs) * 100;
-            let width = ((taskEnd - taskStart) / totalMs) * 100;
-
-            if (left < 0) { width += left; left = 0; }
-            if (left + width > 100) width = 100 - left;
             if (width < 0.2) width = 0.2;
-
             return { leftPercent: left, widthPercent: width };
         }
 
@@ -1462,7 +1476,7 @@
                         <input type="date" value="${inv.start}" id="modalIntervalStart_${i}" style="background: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 3px; padding: 2px 4px; font-size: 0.8rem;" onchange="updateModalInterval(${index}, ${i})">
                         <span>s/d</span>
                         <input type="date" value="${inv.end}" id="modalIntervalEnd_${i}" style="background: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 3px; padding: 2px 4px; font-size: 0.8rem;" onchange="updateModalInterval(${index}, ${i})">
-                        ${task.intervals.length > 1 ? `<button class="action-btn del" type="button" onclick="removeInterval(${index}, ${i})" title="hapus interval ini">${ICONS.trash}</button>` : `<span style="font-size:0.7rem; color:var(--muted-color);">(min 1)</span>`}
+                        <button class="action-btn del" type="button" onclick="removeInterval(${index}, ${i})" title="hapus interval ini">${ICONS.trash}</button>
                     </div>
                 `;
             });
@@ -1479,10 +1493,8 @@
         }
 
         function removeInterval(taskIndex, intIndex) {
-            if (tasks[taskIndex].intervals.length > 1) {
-                tasks[taskIndex].intervals.splice(intIndex, 1);
-                renderIntervalsEditor(taskIndex);
-            } else alert("card minimal harus memiliki 1 interval.");
+            tasks[taskIndex].intervals.splice(intIndex, 1);
+            renderIntervalsEditor(taskIndex);
         }
 
         function saveNotes() {
