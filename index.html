@@ -1659,6 +1659,22 @@
             return indices;
         }
 
+                document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                performSaveNow();
+                const statusEl = document.getElementById('saveStatus');
+                if (statusEl) {
+                    statusEl.innerText = "saved via Ctrl+S";
+                    statusEl.style.color = "var(--auto-badge)";
+                    setTimeout(() => {
+                        statusEl.innerText = "saved";
+                        statusEl.style.color = "var(--muted-color)";
+                    }, 2000);
+                }
+            }
+        });
+
         window.onload = initGantt;
     </script>
 </body>
